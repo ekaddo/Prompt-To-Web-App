@@ -1,2 +1,25 @@
 # Prompt To Web App
-Sandbox for various Prompts to Web Apps 
+
+Sandbox for various prompts to web apps.
+
+Open [index.html](index.html) for a gallery of every app in this repo — each entry pairs a live demo
+with the prompt (or reverse-engineered prompt) behind it, so you can paste it into any online or local
+model and compare the result.
+
+## Adding a new app
+
+1. Create a folder under `Web Apps/<app-name>/` containing the app's `.html` file and a `.md` file with
+   the prompt (written up front, or reverse-engineered from the finished app).
+2. Add an entry to the `APPS` array near the top of the `<script>` in [index.html](index.html):
+
+   ```js
+   {
+     title: "App Title",
+     summary: "One or two sentences describing it.",
+     tags: ["Tech", "Used"],
+     swatch: ["#111", "#222"], // optional preview colors
+     folder: "Web Apps/<app-name>",
+     demo: "app-file.html",
+     prompt: "prompt-file.md"
+   }
+   ```
