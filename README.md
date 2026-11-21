@@ -1,10 +1,12 @@
 # Prompt To Web App
 
-Sandbox for various prompts to web apps.
+**🔗 Live gallery: [ekaddo.github.io/Prompt-To-Web-App](https://ekaddo.github.io/Prompt-To-Web-App/)**
 
-Open [index.html](index.html) for a gallery of every app in this repo — each entry pairs a live demo
-with the prompt (or reverse-engineered prompt) behind it, so you can paste it into any online or local
-model and compare the result.
+Browse every app in this repo as a live gallery — each entry pairs a working demo with the prompt (or
+reverse-engineered prompt) behind it, so you can paste it into any online or local model and compare
+the result.
+
+Sandbox for various prompts to web apps.
 
 ## Adding a new app
 
