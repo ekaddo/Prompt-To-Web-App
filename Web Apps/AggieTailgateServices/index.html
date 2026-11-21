@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aggie Tailgate Services</title>
+  <meta name="description"
+    content="Reserve your tailgate parking slot for the big game on October 28, 2026. Aggie Tailgate Services — 100 premium spaces available." />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Design Tokens ─────────────────────────────────── */
+    :root {
+      --gold: #FFC72C;
+      --gold-dark: #D4A017;
+      --blue: #003B71;
+      --blue-light: #1565C0;
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface-2: #242836;
+      --text: #e8eaed;
+      --text-dim: #9aa0b0;
+      --radius: 10px;
+      --shadow: 0 8px 32px rgba(0, 0, 0, .45);
+    }
+
+    /* ── Reset & Base ──────────────────────────────────── */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Header ────────────────────────────────────────── */
+    header {
+      background: linear-gradient(135deg, var(--blue) 0%, #00264d 100%);
+      padding: 2rem 2rem 1.6rem;
+      text-align: center;
+      border-bottom: 4px solid var(--gold);
+      position: relative;
+      overflow: hidden;
+    }
+
+    header::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 30% 0%, rgba(255, 199, 44, .12) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    header h1 {
+      font-size: 2.4rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      color: var(--gold);
+      text-shadow: 0 2px 12px rgba(255, 199, 44, .3);
+    }
+
+    header p {
+      color: #ffffffcc;
+      margin-top: .4rem;
+      font-size: 1.05rem;
+    }
+
+    .deadline-badge {
+      display: inline-block;
+      margin-top: .75rem;
+      background: rgba(255, 199, 44, .15);
+      border: 1px solid var(--gold);
+      color: var(--gold);
+      padding: .35rem 1rem;
+      border-radius: 999px;
+      font-weight: 600;
+      font-size: .85rem;
+    }
+
+    /* ── Main Layout ───────────────────────────────────── */
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem 1rem 4rem;
+    }
+
+    .section-title {
+      text-align: center;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--gold);
+      margin-bottom: 1.2rem;
+    }
+
+    /* ── Legend ─────────────────────────────────────────── */
+    .legend {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin-bottom: 1.2rem;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: .45rem;
+      font-size: .9rem;
+      color: var(--text-dim);
+    }
+
+    .legend-swatch {
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+    }
+
+    .legend-swatch.gold {
+      background: var(--gold);
+    }
+
+    .legend-swatch.blue {
+      background: var(--blue-light);
+    }
+
+    /* ── Parking Lot ───────────────────────────────────── */
+    .lot-container {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      box-shadow: var(--shadow);
+    }
+
+    .lot-row {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      gap: 6px;
+    }
+
+    .lot-road {
+      height: 38px;
+      background: #2c2f3a;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 8px 0;
+      color: var(--text-dim);
+      font-size: .75rem;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+    }
+
+    .slot {
+      aspect-ratio: 1;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: .82rem;
+      cursor: pointer;
+      transition: transform .15s, box-shadow .15s, background .3s;
+      user-select: none;
+      position: relative;
+    }
+
+    .slot.available {
+      background: var(--gold);
+      color: #1a1a1a;
+      border: 2px solid var(--gold-dark);
+    }
+
+    .slot.available:hover {
+      transform: scale(1.12);
+      box-shadow: 0 0 16px rgba(255, 199, 44, .5);
+      z-index: 2;
+    }
+
+    .slot.reserved {
+      background: var(--blue-light);
+      color: #fff;
+      border: 2px solid var(--blue);
+      cursor: default;
+    }
+
+    .slot.reserved:hover {
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* ── Stats Bar ──────────────────────────────────────── */
+    .stats {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin-top: 1.2rem;
+      flex-wrap: wrap;
+    }
+
+    .stat {
+      background: var(--surface-2);
+      padding: .6rem 1.4rem;
+      border-radius: 999px;
+      font-size: .9rem;
+    }
+
+    .stat strong {
+      color: var(--gold);
+    }
+
+    /* ── Modal Overlay ─────────────────────────────────── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .65);
+      backdrop-filter: blur(6px);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid #333;
+      border-radius: var(--radius);
+      width: 95%;
+      max-width: 480px;
+      padding: 2rem;
+      box-shadow: var(--shadow);
+      position: relative;
+      animation: slideUp .3s ease;
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .modal h2 {
+      font-size: 1.3rem;
+      color: var(--gold);
+      margin-bottom: .25rem;
+    }
+
+    .modal .slot-label {
+      color: var(--text-dim);
+      font-size: .9rem;
+      margin-bottom: 1.4rem;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      font-size: 1.5rem;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .modal-close:hover {
+      color: #fff;
+    }
+
+    /* ── Form ──────────────────────────────────────────── */
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: .85rem;
+      color: var(--text-dim);
+      margin-bottom: .3rem;
+      font-weight: 600;
+    }
+
+    .form-group input[type="text"],
+    .form-group input[type="email"],
+    .form-group input[type="tel"] {
+      width: 100%;
+      padding: .65rem .9rem;
+      background: var(--surface-2);
+      border: 1px solid #3a3f50;
+      border-radius: 6px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: .95rem;
+      outline: none;
+      transition: border .2s;
+    }
+
+    .form-group input:focus {
+      border-color: var(--gold);
+    }
+
+    .addons-title {
+      font-size: .95rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: .6rem;
+      margin-top: .2rem;
+    }
+
+    .addon-row {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      padding: .45rem 0;
+    }
+
+    .addon-row input[type="checkbox"] {
+      accent-color: var(--gold);
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+    .addon-row label {
+      flex: 1;
+      font-size: .9rem;
+      cursor: pointer;
+    }
+
+    .addon-price {
+      font-weight: 700;
+      color: var(--gold);
+      font-size: .9rem;
+    }
+
+    .total-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 1.2rem;
+      padding-top: 1rem;
+      border-top: 1px solid #3a3f50;
+    }
+
+    .total-line span:first-child {
+      font-weight: 700;
+      font-size: 1.05rem;
+    }
+
+    .total-line span:last-child {
+      font-weight: 800;
+      font-size: 1.2rem;
+      color: var(--gold);
+    }
+
+    .btn-submit {
+      width: 100%;
+      margin-top: 1.2rem;
+      padding: .85rem;
+      background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%);
+      color: #1a1a1a;
+      border: none;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity .2s, transform .15s;
+    }
+
+    .btn-submit:hover {
+      opacity: .9;
+      transform: translateY(-1px);
+    }
+
+    .btn-submit:active {
+      transform: translateY(0);
+    }
+
+    .form-error {
+      color: #ff6b6b;
+      font-size: .82rem;
+      margin-top: .6rem;
+      display: none;
+    }
+
+    /* ── Closed Banner ─────────────────────────────────── */
+    .closed-banner {
+      display: none;
+      background: linear-gradient(135deg, #b71c1c, #880e0e);
+      text-align: center;
+      padding: 1rem;
+      font-weight: 700;
+      font-size: 1.05rem;
+      color: #fff;
+    }
+
+    .closed-banner.visible {
+      display: block;
+    }
+
+    /* ── Nav ────────────────────────────────────────────── */
+    nav {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      padding: .8rem;
+      background: var(--surface);
+      border-bottom: 1px solid #333;
+    }
+
+    nav a {
+      color: var(--text-dim);
+      text-decoration: none;
+      font-weight: 600;
+      padding: .45rem 1.2rem;
+      border-radius: 999px;
+      font-size: .9rem;
+      transition: all .2s;
+    }
+
+    nav a:hover {
+      color: var(--gold);
+      background: rgba(255, 199, 44, .08);
+    }
+
+    nav a.active {
+      color: var(--gold);
+      background: rgba(255, 199, 44, .15);
+    }
+
+    /* ── Footer ────────────────────────────────────────── */
+    footer {
+      text-align: center;
+      padding: 2rem 1rem;
+      color: var(--text-dim);
+      font-size: .8rem;
+    }
+
+    /* ── Toast ──────────────────────────────────────────── */
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--blue);
+      color: #fff;
+      padding: .8rem 1.6rem;
+      border-radius: 999px;
+      font-weight: 600;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, .5);
+      opacity: 0;
+      transition: transform .4s ease, opacity .4s ease;
+      z-index: 200;
+      pointer-events: none;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    /* ── Responsive ────────────────────────────────────── */
+    @media (max-width: 600px) {
+      header h1 {
+        font-size: 1.6rem;
+      }
+
+      .lot-row {
+        gap: 3px;
+      }
+
+      .slot {
+        font-size: .65rem;
+        border-width: 1px;
+      }
+
+      .modal {
+        padding: 1.4rem;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ── Header ──────────────────────────────────────── -->
+  <header>
+    <h1>🏈 Aggie Tailgate Services</h1>
+    <p>October 28, 2026 — Reserve Your Premium Tailgate Spot!</p>
+    <span class="deadline-badge">⏰ Sign-up deadline: April 28, 2026</span>
+  </header>
+
+  <nav>
+    <a href="index.html" class="active">Slot Reservations</a>
+    <a href="simulation.html">Staffing Simulation</a>
+  </nav>
+
+  <!-- ── Closed Banner ───────────────────────────────── -->
+  <div class="closed-banner" id="closedBanner">
+    🚫 Sign-ups are closed. The registration deadline was April 28, 2026.
+  </div>
+
+  <!-- ── Main Content ────────────────────────────────── -->
+  <main>
+    <h2 class="section-title">Parking Lot Map</h2>
+
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-swatch gold"></div> Available
+      </div>
+      <div class="legend-item">
+        <div class="legend-swatch blue"></div> Reserved
+      </div>
+    </div>
+
+    <div class="lot-container">
+      <!-- Row A: Slots 1-50 (5 sub-rows of 10) -->
+      <div class="lot-row" id="rowA1"></div>
+      <div class="lot-row" id="rowA2"></div>
+      <div class="lot-row" id="rowA3"></div>
+      <div class="lot-row" id="rowA4"></div>
+      <div class="lot-row" id="rowA5"></div>
+
+      <!-- Road -->
+      <div class="lot-road">— — — R O A D — — —</div>
+
+      <!-- Row B: Slots 51-100 (5 sub-rows of 10) -->
+      <div class="lot-row" id="rowB1"></div>
+      <div class="lot-row" id="rowB2"></div>
+      <div class="lot-row" id="rowB3"></div>
+      <div class="lot-row" id="rowB4"></div>
+      <div class="lot-row" id="rowB5"></div>
+    </div>
+
+    <div class="stats">
+      <div class="stat">Available: <strong id="statAvail">100</strong></div>
+      <div class="stat">Reserved: <strong id="statReserved">0</strong></div>
+      <div class="stat">Space: <strong>$80</strong></div>
+    </div>
+  </main>
+
+  <!-- ── Modal ───────────────────────────────────────── -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <button class="modal-close" id="modalClose">&times;</button>
+      <h2>Reserve Your Spot</h2>
+      <p class="slot-label" id="slotLabel">Slot #—</p>
+
+      <form id="reserveForm" autocomplete="off">
+        <div class="form-group">
+          <label for="inputName">Full Name *</label>
+          <input type="text" id="inputName" required placeholder="Jane Doe" />
+        </div>
+        <div class="form-group">
+          <label for="inputEmail">Email Address *</label>
+          <input type="email" id="inputEmail" required placeholder="jane@example.com" />
+        </div>
+        <div class="form-group">
+          <label for="inputPhone">Phone Number *</label>
+          <input type="tel" id="inputPhone" required placeholder="(555) 123-4567" />
+        </div>
+
+        <p class="addons-title">Add-On Services</p>
+        <div class="addon-row">
+          <input type="checkbox" id="addonIce" />
+          <label for="addonIce">Ice Delivery</label>
+          <span class="addon-price">$20</span>
+        </div>
+        <div class="addon-row">
+          <input type="checkbox" id="addonSetup" />
+          <label for="addonSetup">Setup Service</label>
+          <span class="addon-price">$150</span>
+        </div>
+        <div class="addon-row">
+          <input type="checkbox" id="addonCleanup" />
+          <label for="addonCleanup">Cleanup Service</label>
+          <span class="addon-price">$150</span>
+        </div>
+
+        <div class="total-line">
+          <span>Total</span>
+          <span id="totalPrice">$80.00</span>
+        </div>
+
+        <p class="form-error" id="formError"></p>
+        <button type="submit" class="btn-submit">Reserve &amp; Download Invoice</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Toast ───────────────────────────────────────── -->
+  <div class="toast" id="toast"></div>
+
+  <!-- ── Footer ──────────────────────────────────────── -->
+  <footer>
+    &copy; 2026 Aggie Tailgate Services. All rights reserved.
+  </footer>
+
+  <!-- ── JavaScript ──────────────────────────────────── -->
+  <script>
+    (() => {
+      'use strict';
+
+      /* ── Constants ───────────────────────────────────── */
+      const TOTAL_SLOTS = 100;
+      const BASE_PRICE = 80;
+      const DEADLINE = new Date('2026-04-28T23:59:59');
+      const EVENT_DATE_DISP = 'October 28, 2026';
+
+      const ADDONS = [
+        { id: 'addonIce', label: 'Ice Delivery', price: 20 },
+        { id: 'addonSetup', label: 'Setup Service', price: 150 },
+        { id: 'addonCleanup', label: 'Cleanup Service', price: 150 },
+      ];
+
+      /* ── State ───────────────────────────────────────── */
+      const reservations = {};          // slotNum → { name, email, phone, addons, total }
+      let selectedSlot = null;
+      const registrationOpen = new Date() < DEADLINE;
+
+      /* ── DOM refs ────────────────────────────────────── */
+      const $overlay = document.getElementById('modalOverlay');
+      const $form = document.getElementById('reserveForm');
+      const $slotLabel = document.getElementById('slotLabel');
+      const $total = document.getElementById('totalPrice');
+      const $error = document.getElementById('formError');
+      const $toast = document.getElementById('toast');
+      const $statAvail = document.getElementById('statAvail');
+      const $statRes = document.getElementById('statReserved');
+
+      /* ── Deadline check ──────────────────────────────── */
+      if (!registrationOpen) {
+        document.getElementById('closedBanner').classList.add('visible');
+      }
+
+      /* ── Build Grid ──────────────────────────────────── */
+      const rowContainers = [
+        document.getElementById('rowA1'),
+        document.getElementById('rowA2'),
+        document.getElementById('rowA3'),
+        document.getElementById('rowA4'),
+        document.getElementById('rowA5'),
+        document.getElementById('rowB1'),
+        document.getElementById('rowB2'),
+        document.getElementById('rowB3'),
+        document.getElementById('rowB4'),
+        document.getElementById('rowB5'),
+      ];
+
+      for (let i = 1; i <= TOTAL_SLOTS; i++) {
+        const slot = document.createElement('div');
+        slot.className = 'slot available';
+        slot.textContent = i;
+        slot.dataset.num = i;
+        slot.id = `slot-${i}`;
+        slot.addEventListener('click', () => openModal(i));
+
+        // Determine which sub-row container (each holds 10 slots)
+        const containerIdx = Math.ceil(i / 10) - 1;
+        rowContainers[containerIdx].appendChild(slot);
+      }
+
+      /* ── Helpers ─────────────────────────────────────── */
+      function updateStats() {
+        const reserved = Object.keys(reservations).length;
+        $statAvail.textContent = TOTAL_SLOTS - reserved;
+        $statRes.textContent = reserved;
+      }
+
+      function calcTotal() {
+        let total = BASE_PRICE;
+        ADDONS.forEach(a => {
+          if (document.getElementById(a.id).checked) total += a.price;
+        });
+        return total;
+      }
+
+      function showToast(msg) {
+        $toast.textContent = msg;
+        $toast.classList.add('show');
+        setTimeout(() => $toast.classList.remove('show'), 3000);
+      }
+
+      /* ── Modal ───────────────────────────────────────── */
+      function openModal(num) {
+        if (!registrationOpen) {
+          showToast('Sign-ups are closed.');
+          return;
+        }
+        if (reservations[num]) {
+          showToast(`Slot #${num} is already reserved.`);
+          return;
+        }
+        selectedSlot = num;
+        $slotLabel.textContent = `Slot #${num}`;
+        $form.reset();
+        $error.style.display = 'none';
+        updateTotalDisplay();
+        $overlay.classList.add('active');
+      }
+
+      function closeModal() {
+        $overlay.classList.remove('active');
+        selectedSlot = null;
+      }
+
+      document.getElementById('modalClose').addEventListener('click', closeModal);
+      $overlay.addEventListener('click', e => { if (e.target === $overlay) closeModal(); });
+
+      /* ── Live total ──────────────────────────────────── */
+      function updateTotalDisplay() {
+        $total.textContent = `$${calcTotal().toFixed(2)}`;
+      }
+      ADDONS.forEach(a => {
+        document.getElementById(a.id).addEventListener('change', updateTotalDisplay);
+      });
+
+      /* ── Form Submit ─────────────────────────────────── */
+      $form.addEventListener('submit', e => {
+        e.preventDefault();
+        const name = document.getElementById('inputName').value.trim();
+        const email = document.getElementById('inputEmail').value.trim();
+        const phone = document.getElementById('inputPhone').value.trim();
+
+        if (!name || !email || !phone) {
+          $error.textContent = 'Please fill in all required fields.';
+          $error.style.display = 'block';
+          return;
+        }
+
+        const selectedAddons = ADDONS.filter(a => document.getElementById(a.id).checked);
+        const total = calcTotal();
+
+        // Save reservation
+        reservations[selectedSlot] = { name, email, phone, addons: selectedAddons, total };
+
+        // Update UI
+        const slotEl = document.getElementById(`slot-${selectedSlot}`);
+        slotEl.classList.remove('available');
+        slotEl.classList.add('reserved');
+        updateStats();
+
+        // Generate PDF
+        generateInvoice(selectedSlot, name, email, phone, selectedAddons, total);
+
+        closeModal();
+        showToast(`✅ Slot #${selectedSlot} reserved for ${name}!`);
+      });
+
+      /* ── PDF Invoice ─────────────────────────────────── */
+      function generateInvoice(slotNum, name, email, phone, addons, total) {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        const pageW = doc.internal.pageSize.getWidth();
+        let y = 20;
+
+        // Header bar
+        doc.setFillColor(0, 59, 113);    // Aggie Blue
+        doc.rect(0, 0, pageW, 40, 'F');
+        doc.setTextColor(255, 199, 44);  // Aggie Gold
+        doc.setFontSize(22);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Aggie Tailgate Services', pageW / 2, 18, { align: 'center' });
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(255, 255, 255);
+        doc.text(`Event: ${EVENT_DATE_DISP}`, pageW / 2, 28, { align: 'center' });
+        doc.text('INVOICE', pageW / 2, 35, { align: 'center' });
+
+        y = 52;
+
+        // Invoice info
+        doc.setTextColor(60, 60, 60);
+        doc.setFontSize(10);
+        const invoiceNum = `INV-${Date.now().toString(36).toUpperCase()}`;
+        const invoiceDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+        doc.text(`Invoice #: ${invoiceNum}`, 14, y);
+        doc.text(`Date: ${invoiceDate}`, pageW - 14, y, { align: 'right' });
+
+        y += 14;
+
+        // Customer info
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Bill To:', 14, y);
+        y += 7;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.text(name, 14, y); y += 5;
+        doc.text(email, 14, y); y += 5;
+        doc.text(phone, 14, y); y += 12;
+
+        // Table header
+        doc.setFillColor(0, 59, 113);
+        doc.rect(14, y, pageW - 28, 8, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.text('Description', 18, y + 5.5);
+        doc.text('Amount', pageW - 18, y + 5.5, { align: 'right' });
+        y += 12;
+
+        // Line items
+        doc.setTextColor(40, 40, 40);
+        doc.setFont('helvetica', 'normal');
+
+        const items = [{ label: `Tailgate Space — Slot #${slotNum}`, price: BASE_PRICE }];
+        addons.forEach(a => items.push({ label: a.label, price: a.price }));
+
+        items.forEach((item, idx) => {
+          if (idx % 2 === 0) {
+            doc.setFillColor(245, 245, 245);
+            doc.rect(14, y - 4, pageW - 28, 8, 'F');
+          }
+          doc.text(item.label, 18, y + 1);
+          doc.text(`$${item.price.toFixed(2)}`, pageW - 18, y + 1, { align: 'right' });
+          y += 8;
+        });
+
+        // Total
+        y += 4;
+        doc.setDrawColor(0, 59, 113);
+        doc.setLineWidth(0.5);
+        doc.line(pageW - 80, y, pageW - 14, y);
+        y += 8;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(13);
+        doc.setTextColor(0, 59, 113);
+        doc.text('Total Due:', pageW - 80, y);
+        doc.text(`$${total.toFixed(2)}`, pageW - 18, y, { align: 'right' });
+
+        // Footer
+        y = doc.internal.pageSize.getHeight() - 20;
+        doc.setFontSize(8);
+        doc.setTextColor(140, 140, 140);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Thank you for choosing Aggie Tailgate Services!', pageW / 2, y, { align: 'center' });
+        doc.text('Questions? Contact us at info@aggietailgate.com', pageW / 2, y + 5, { align: 'center' });
+
+        // Download
+        doc.save(`AggieTailgate_Slot${slotNum}_Invoice.pdf`);
+      }
+
+    })();
+  </script>
+
+</body>
+
+</html>

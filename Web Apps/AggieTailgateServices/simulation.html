@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Staffing Simulation — Aggie Tailgate Services</title>
+    <meta name="description"
+        content="Simulate crew staffing requirements for setup, ice delivery, and cleanup at Aggie Tailgate Services." />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <style>
+        /* ── Design Tokens ─────────────────────────────────── */
+        :root {
+            --gold: #FFC72C;
+            --gold-dark: #D4A017;
+            --blue: #003B71;
+            --blue-light: #1565C0;
+            --bg: #0f1117;
+            --surface: #1a1d27;
+            --surface-2: #242836;
+            --surface-3: #2e3245;
+            --text: #e8eaed;
+            --text-dim: #9aa0b0;
+            --green: #4caf50;
+            --orange: #ff9800;
+            --red: #ef5350;
+            --cyan: #26c6da;
+            --radius: 10px;
+            --shadow: 0 8px 32px rgba(0, 0, 0, .45);
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* ── Header ────────────────────────────────────────── */
+        header {
+            background: linear-gradient(135deg, var(--blue) 0%, #00264d 100%);
+            padding: 1.6rem 2rem 1.4rem;
+            text-align: center;
+            border-bottom: 4px solid var(--gold);
+            position: relative;
+            overflow: hidden;
+        }
+
+        header::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse at 30% 0%, rgba(255, 199, 44, .12) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        header h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--gold);
+            text-shadow: 0 2px 12px rgba(255, 199, 44, .3);
+        }
+
+        header p {
+            color: #ffffffcc;
+            margin-top: .3rem;
+            font-size: .95rem;
+        }
+
+        /* ── Nav ────────────────────────────────────────────── */
+        nav {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            padding: .8rem;
+            background: var(--surface);
+            border-bottom: 1px solid #333;
+        }
+
+        nav a {
+            color: var(--text-dim);
+            text-decoration: none;
+            font-weight: 600;
+            padding: .45rem 1.2rem;
+            border-radius: 999px;
+            font-size: .9rem;
+            transition: all .2s;
+        }
+
+        nav a:hover {
+            color: var(--gold);
+            background: rgba(255, 199, 44, .08);
+        }
+
+        nav a.active {
+            color: var(--gold);
+            background: rgba(255, 199, 44, .15);
+        }
+
+        /* ── Main ───────────────────────────────────────────── */
+        main {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1rem 4rem;
+        }
+
+        .section-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--gold);
+            margin-bottom: .6rem;
+        }
+
+        .section-desc {
+            color: var(--text-dim);
+            font-size: .9rem;
+            margin-bottom: 1.2rem;
+        }
+
+        /* ── Config Panel ──────────────────────────────────── */
+        .config-panel {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 1.8rem;
+            box-shadow: var(--shadow);
+            margin-bottom: 2rem;
+        }
+
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.6rem;
+        }
+
+        .config-group {
+            background: var(--surface-2);
+            border-radius: 8px;
+            padding: 1.2rem 1.4rem;
+            border-left: 4px solid var(--gold);
+        }
+
+        .config-group h3 {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: .8rem;
+            display: flex;
+            align-items: center;
+            gap: .4rem;
+        }
+
+        .config-group h3 .emoji {
+            font-size: 1.15rem;
+        }
+
+        .field {
+            margin-bottom: .8rem;
+        }
+
+        .field:last-child {
+            margin-bottom: 0;
+        }
+
+        .field label {
+            display: block;
+            font-size: .8rem;
+            color: var(--text-dim);
+            font-weight: 600;
+            margin-bottom: .25rem;
+        }
+
+        .field input {
+            width: 100%;
+            padding: .55rem .8rem;
+            background: var(--surface-3);
+            border: 1px solid #3a3f50;
+            border-radius: 6px;
+            color: var(--text);
+            font-family: inherit;
+            font-size: .95rem;
+            outline: none;
+            transition: border .2s;
+        }
+
+        .field input:focus {
+            border-color: var(--gold);
+        }
+
+        .field .hint {
+            font-size: .72rem;
+            color: var(--text-dim);
+            margin-top: .2rem;
+        }
+
+        .btn-run {
+            display: block;
+            margin: 1.6rem auto 0;
+            padding: .85rem 3rem;
+            background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%);
+            color: #1a1a1a;
+            border: none;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 1.05rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: opacity .2s, transform .15s;
+        }
+
+        .btn-run:hover {
+            opacity: .9;
+            transform: translateY(-2px);
+        }
+
+        .btn-run:active {
+            transform: translateY(0);
+        }
+
+        /* ── Results ────────────────────────────────────────── */
+        .results {
+            display: none;
+        }
+
+        .results.visible {
+            display: block;
+        }
+
+        /* Summary Cards */
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .summary-card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 1.4rem;
+            box-shadow: var(--shadow);
+            text-align: center;
+        }
+
+        .summary-card .icon {
+            font-size: 2rem;
+            margin-bottom: .5rem;
+        }
+
+        .summary-card .label {
+            font-size: .82rem;
+            color: var(--text-dim);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+        }
+
+        .summary-card .value {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--gold);
+            margin: .2rem 0;
+        }
+
+        .summary-card .detail {
+            font-size: .82rem;
+            color: var(--text-dim);
+        }
+
+        .summary-card.setup {
+            border-top: 3px solid var(--green);
+        }
+
+        .summary-card.ice {
+            border-top: 3px solid var(--cyan);
+        }
+
+        .summary-card.cleanup {
+            border-top: 3px solid var(--orange);
+        }
+
+        .summary-card.total {
+            border-top: 3px solid var(--gold);
+        }
+
+        /* ── Timeline ──────────────────────────────────────── */
+        .timeline-section {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 1.6rem;
+            box-shadow: var(--shadow);
+            margin-bottom: 1.5rem;
+        }
+
+        .timeline-section h3 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+        }
+
+        .timeline-section h3 .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .dot-setup {
+            background: var(--green);
+        }
+
+        .dot-ice {
+            background: var(--cyan);
+        }
+
+        .dot-cleanup {
+            background: var(--orange);
+        }
+
+        .timeline-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: .85rem;
+        }
+
+        .timeline-table th {
+            text-align: left;
+            padding: .6rem .8rem;
+            background: var(--surface-2);
+            color: var(--text-dim);
+            font-weight: 600;
+            font-size: .78rem;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+        }
+
+        .timeline-table td {
+            padding: .55rem .8rem;
+            border-bottom: 1px solid #2a2e3a;
+        }
+
+        .timeline-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .timeline-table .hour-cell {
+            font-weight: 700;
+            white-space: nowrap;
+            color: var(--gold);
+        }
+
+        .timeline-table .bar-cell {
+            width: 40%;
+        }
+
+        .progress-bar {
+            height: 22px;
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+            background: var(--surface-3);
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width .6s ease;
+            display: flex;
+            align-items: center;
+            padding-left: 6px;
+            font-size: .72rem;
+            font-weight: 700;
+            color: #fff;
+            min-width: fit-content;
+        }
+
+        .fill-setup {
+            background: linear-gradient(90deg, #388e3c, #66bb6a);
+        }
+
+        .fill-ice {
+            background: linear-gradient(90deg, #00838f, #4dd0e1);
+        }
+
+        .fill-cleanup {
+            background: linear-gradient(90deg, #e65100, #ffb74d);
+        }
+
+        .crew-badge {
+            display: inline-block;
+            padding: .15rem .6rem;
+            border-radius: 999px;
+            font-size: .75rem;
+            font-weight: 600;
+            background: rgba(255, 199, 44, .12);
+            color: var(--gold);
+        }
+
+        /* ── Footer ────────────────────────────────────────── */
+        footer {
+            text-align: center;
+            padding: 2rem 1rem;
+            color: var(--text-dim);
+            font-size: .8rem;
+        }
+
+        @media (max-width: 600px) {
+            header h1 {
+                font-size: 1.4rem;
+            }
+
+            .config-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .summary-cards {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .timeline-table {
+                font-size: .75rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1>🏈 Aggie Tailgate Services</h1>
+        <p>Staffing &amp; Logistics Simulation</p>
+    </header>
+
+    <nav>
+        <a href="index.html">Slot Reservations</a>
+        <a href="simulation.html" class="active">Staffing Simulation</a>
+    </nav>
+
+    <main>
+        <!-- ── Config Panel ──────────────────────────────── -->
+        <h2 class="section-title">Simulation Parameters</h2>
+        <p class="section-desc">Configure crew sizes, equipment, and timing to see hour-by-hour staffing needs for 100
+            tailgate slots.</p>
+
+        <div class="config-panel">
+            <div class="config-grid">
+
+                <!-- General -->
+                <div class="config-group">
+                    <h3><span class="emoji">📋</span> General</h3>
+                    <div class="field">
+                        <label for="totalSlots">Total Slots to Service</label>
+                        <input type="number" id="totalSlots" value="100" min="1" max="200" />
+                    </div>
+                    <div class="field">
+                        <label for="workStart">Work Day Start (24h)</label>
+                        <input type="number" id="workStart" value="8" min="0" max="23" />
+                        <div class="hint">Default: 8 AM</div>
+                    </div>
+                    <div class="field">
+                        <label for="workEnd">Work Day End (24h)</label>
+                        <input type="number" id="workEnd" value="20" min="1" max="24" />
+                        <div class="hint">Default: 8 PM (12-hour working day)</div>
+                    </div>
+                    <div class="field">
+                        <label for="laborRate">Labor Rate ($/hour)</label>
+                        <input type="number" id="laborRate" value="20" min="1" max="200" />
+                        <div class="hint">Default: $20/hour per person</div>
+                    </div>
+                </div>
+
+                <!-- Setup -->
+                <div class="config-group">
+                    <h3><span class="emoji">🔧</span> Setup Crews</h3>
+                    <div class="field">
+                        <label for="setupCrews">Number of Setup Crews</label>
+                        <input type="number" id="setupCrews" value="3" min="1" max="50" />
+                    </div>
+                    <div class="field">
+                        <label for="setupPeople">People per Crew</label>
+                        <input type="number" id="setupPeople" value="2" min="1" max="10" />
+                    </div>
+                    <div class="field">
+                        <label for="setupMinutes">Minutes per Slot</label>
+                        <input type="number" id="setupMinutes" value="20" min="1" max="120" />
+                        <div class="hint">Default: 20 min per slot per crew</div>
+                    </div>
+                </div>
+
+                <!-- Ice Delivery -->
+                <div class="config-group">
+                    <h3><span class="emoji">🧊</span> Ice Delivery</h3>
+                    <div class="field">
+                        <label for="iceTrucks">Number of Pickup Trucks</label>
+                        <input type="number" id="iceTrucks" value="2" min="1" max="20" />
+                    </div>
+                    <div class="field">
+                        <label for="iceStaffPerTruck">Staff per Truck (driver + offloaders)</label>
+                        <input type="number" id="iceStaffPerTruck" value="2" min="2" max="6" />
+                        <div class="hint">Default: 1 driver + 1 offloader = 2</div>
+                    </div>
+                    <div class="field">
+                        <label for="iceFrequency">Delivery Frequency (every N hours)</label>
+                        <input type="number" id="iceFrequency" value="2" min="1" max="6" />
+                        <div class="hint">Default: every 2 hours</div>
+                    </div>
+                    <div class="field">
+                        <label for="iceMinutesPerSlot">Minutes per Slot Delivery</label>
+                        <input type="number" id="iceMinutesPerSlot" value="3" min="1" max="30" />
+                        <div class="hint">Time to deliver ice to one slot</div>
+                    </div>
+                </div>
+
+                <!-- Cleanup -->
+                <div class="config-group">
+                    <h3><span class="emoji">🧹</span> Cleanup Crews</h3>
+                    <div class="field">
+                        <label for="cleanupCrews">Number of Cleanup Crews</label>
+                        <input type="number" id="cleanupCrews" value="3" min="1" max="50" />
+                    </div>
+                    <div class="field">
+                        <label for="cleanupPeople">People per Crew</label>
+                        <input type="number" id="cleanupPeople" value="2" min="1" max="10" />
+                    </div>
+                    <div class="field">
+                        <label for="cleanupMinutes">Minutes per Slot</label>
+                        <input type="number" id="cleanupMinutes" value="30" min="1" max="120" />
+                        <div class="hint">Default: 30 min per slot per crew</div>
+                    </div>
+                </div>
+
+            </div>
+
+            <button class="btn-run" id="btnRun">▶ Run Simulation</button>
+        </div>
+
+        <!-- ── Results ───────────────────────────────────── -->
+        <div class="results" id="results">
+
+            <h2 class="section-title">Crew Requirements Summary</h2>
+            <div class="summary-cards" id="summaryCards"></div>
+
+            <!-- Setup Timeline -->
+            <div class="timeline-section" id="setupTimeline">
+                <h3><span class="dot dot-setup"></span> Setup — Hour-by-Hour Execution</h3>
+                <table class="timeline-table" id="setupTable"></table>
+            </div>
+
+            <!-- Ice Timeline -->
+            <div class="timeline-section" id="iceTimeline">
+                <h3><span class="dot dot-ice"></span> Ice Delivery — Hour-by-Hour Execution</h3>
+                <table class="timeline-table" id="iceTable"></table>
+            </div>
+
+            <!-- Cleanup Timeline -->
+            <div class="timeline-section" id="cleanupTimeline">
+                <h3><span class="dot dot-cleanup"></span> Cleanup — Hour-by-Hour Execution</h3>
+                <table class="timeline-table" id="cleanupTable"></table>
+            </div>
+
+        </div>
+    </main>
+
+    <footer>&copy; 2026 Aggie Tailgate Services. All rights reserved.</footer>
+
+    <script>
+        (() => {
+            'use strict';
+
+            const $ = id => document.getElementById(id);
+            const val = id => Math.max(1, parseInt($(id).value) || 1);
+
+            /* ── Helper: format hour ─────────────────────────── */
+            function fmtHour(h) {
+                const suffix = h >= 12 ? 'PM' : 'AM';
+                const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+                return `${h12}:00 ${suffix}`;
+            }
+
+            /* ── Helper: build table ─────────────────────────── */
+            function buildTable(tableEl, headers, rows) {
+                let html = '<thead><tr>';
+                headers.forEach(h => html += `<th>${h}</th>`);
+                html += '</tr></thead><tbody>';
+                rows.forEach(r => html += r);
+                html += '</tbody>';
+                tableEl.innerHTML = html;
+            }
+
+            /* ── Run Simulation ──────────────────────────────── */
+            const fmtMoney = n => '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+            $('btnRun').addEventListener('click', () => {
+                // Read params
+                const totalSlots = val('totalSlots');
+                const workStart = parseInt($('workStart').value) || 8;
+                const workEnd = parseInt($('workEnd').value) || 20;
+                const workHours = Math.max(1, workEnd - workStart);
+                const laborRate = val('laborRate');
+
+                const setupCrews = val('setupCrews');
+                const setupPeople = val('setupPeople');
+                const setupMinutes = val('setupMinutes');
+
+                const iceTrucks = val('iceTrucks');
+                const iceStaff = val('iceStaffPerTruck');
+                const iceFreq = val('iceFrequency');
+                const iceMinPerSlot = val('iceMinutesPerSlot');
+
+                const cleanupCrews = val('cleanupCrews');
+                const cleanupPeople = val('cleanupPeople');
+                const cleanupMinutes = val('cleanupMinutes');
+
+                /* ── SETUP Simulation ────────────────────────── */
+                // Each crew does (60 / setupMinutes) slots per hour
+                const setupSlotsPerCrewPerHour = 60 / setupMinutes;
+                const setupSlotsPerHour = setupCrews * setupSlotsPerCrewPerHour;
+                const setupTotalHours = Math.ceil(totalSlots / setupSlotsPerHour);
+                const setupTotalStaff = setupCrews * setupPeople;
+
+                const setupRows = [];
+                let setupRemaining = totalSlots;
+                let setupDayNum = 1;
+                let setupHourCount = 0;
+
+                while (setupRemaining > 0) {
+                    for (let h = workStart; h < workEnd && setupRemaining > 0; h++) {
+                        const done = Math.min(setupRemaining, setupSlotsPerHour);
+                        setupRemaining -= done;
+                        const completed = totalSlots - setupRemaining;
+                        const pct = Math.round((completed / totalSlots) * 100);
+                        setupHourCount++;
+
+                        setupRows.push(`<tr>
+              <td class="hour-cell">${setupDayNum > 1 ? 'Day ' + setupDayNum + ' ' : ''}${fmtHour(h)}–${fmtHour(h + 1)}</td>
+              <td><span class="crew-badge">${setupCrews} crews × ${setupPeople} ppl</span></td>
+              <td>${Math.round(done)} slots</td>
+              <td>${completed} / ${totalSlots}</td>
+              <td class="bar-cell">
+                <div class="progress-bar">
+                  <div class="progress-fill fill-setup" style="width:${pct}%">${pct}%</div>
+                </div>
+              </td>
+            </tr>`);
+                    }
+                    if (setupRemaining > 0) setupDayNum++;
+                }
+
+                buildTable($('setupTable'),
+                    ['Time Block', 'Crew Active', 'Slots This Hour', 'Cumulative', 'Progress'],
+                    setupRows
+                );
+
+                const setupDaysNeeded = setupDayNum;
+
+                /* ── ICE DELIVERY Simulation ─────────────────── */
+                // Ice runs happen every iceFreq hours during the 12-hour event day
+                const iceRounds = Math.floor(workHours / iceFreq);
+                const iceSlotsPerTruckPerRound = Math.floor(60 * iceFreq / iceMinPerSlot);
+                const iceSlotsPerRound = iceTrucks * iceSlotsPerTruckPerRound;
+                const iceTotalStaff = iceTrucks * iceStaff;
+
+                // Can we serve all slots each round? If not, some may not get served every round.
+                const iceRows = [];
+                for (let r = 0; r < iceRounds; r++) {
+                    const hourOffset = r * iceFreq;
+                    const startH = workStart + hourOffset;
+                    const endH = startH + iceFreq;
+                    const served = Math.min(totalSlots, iceSlotsPerRound);
+                    const pct = Math.round((served / totalSlots) * 100);
+
+                    // Show which hours this delivery window covers
+                    let timeLabel = `${fmtHour(startH)}–${fmtHour(endH)}`;
+
+                    iceRows.push(`<tr>
+            <td class="hour-cell">Round ${r + 1}: ${timeLabel}</td>
+            <td><span class="crew-badge">${iceTrucks} trucks × ${iceStaff} staff</span></td>
+            <td>${served} / ${totalSlots} slots</td>
+            <td>${served >= totalSlots ? '✅ Full coverage' : '⚠️ ' + (totalSlots - served) + ' slots unserved'}</td>
+            <td class="bar-cell">
+              <div class="progress-bar">
+                <div class="progress-fill fill-ice" style="width:${pct}%">${pct}%</div>
+              </div>
+            </td>
+          </tr>`);
+                }
+
+                // Can current trucks cover all slots in one round?
+                const trucksNeeded = Math.ceil(totalSlots / iceSlotsPerTruckPerRound);
+
+                buildTable($('iceTable'),
+                    ['Delivery Window', 'Crew Active', 'Slots Served', 'Coverage', 'Capacity Used'],
+                    iceRows
+                );
+
+                /* ── CLEANUP Simulation ──────────────────────── */
+                const cleanupSlotsPerCrewPerHour = 60 / cleanupMinutes;
+                const cleanupSlotsPerHour = cleanupCrews * cleanupSlotsPerCrewPerHour;
+                const cleanupTotalHours = Math.ceil(totalSlots / cleanupSlotsPerHour);
+                const cleanupTotalStaff = cleanupCrews * cleanupPeople;
+
+                const cleanupRows = [];
+                let cleanupRemaining = totalSlots;
+                let cleanupDayNum = 1;
+                let cleanupHourCount = 0;
+
+                while (cleanupRemaining > 0) {
+                    for (let h = workStart; h < workEnd && cleanupRemaining > 0; h++) {
+                        const done = Math.min(cleanupRemaining, cleanupSlotsPerHour);
+                        cleanupRemaining -= done;
+                        const completed = totalSlots - cleanupRemaining;
+                        const pct = Math.round((completed / totalSlots) * 100);
+                        cleanupHourCount++;
+
+                        cleanupRows.push(`<tr>
+              <td class="hour-cell">${cleanupDayNum > 1 ? 'Day ' + cleanupDayNum + ' ' : ''}${fmtHour(h)}–${fmtHour(h + 1)}</td>
+              <td><span class="crew-badge">${cleanupCrews} crews × ${cleanupPeople} ppl</span></td>
+              <td>${Math.round(done)} slots</td>
+              <td>${completed} / ${totalSlots}</td>
+              <td class="bar-cell">
+                <div class="progress-bar">
+                  <div class="progress-fill fill-cleanup" style="width:${pct}%">${pct}%</div>
+                </div>
+              </td>
+            </tr>`);
+                    }
+                    if (cleanupRemaining > 0) cleanupDayNum++;
+                }
+
+                const cleanupDaysNeeded = cleanupDayNum;
+
+                buildTable($('cleanupTable'),
+                    ['Time Block', 'Crew Active', 'Slots This Hour', 'Cumulative', 'Progress'],
+                    cleanupRows
+                );
+
+                /* ── Labor Cost Calculations ─────────────────── */
+                // Setup: staff × hours worked
+                const setupLaborHours = setupTotalStaff * setupHourCount;
+                const setupLaborCost = setupLaborHours * laborRate;
+
+                // Ice: staff work the full event day
+                const iceLaborHours = iceTotalStaff * workHours;
+                const iceLaborCost = iceLaborHours * laborRate;
+
+                // Cleanup: staff × hours worked
+                const cleanupLaborHours = cleanupTotalStaff * cleanupHourCount;
+                const cleanupLaborCost = cleanupLaborHours * laborRate;
+
+                const totalLaborCost = setupLaborCost + iceLaborCost + cleanupLaborCost;
+                const totalLaborHours = setupLaborHours + iceLaborHours + cleanupLaborHours;
+
+                /* ── Summary Cards ───────────────────────────── */
+                const totalStaff = setupTotalStaff + iceTotalStaff + cleanupTotalStaff;
+
+                $('summaryCards').innerHTML = `
+          <div class="summary-card setup">
+            <div class="icon">🔧</div>
+            <div class="label">Setup Crew</div>
+            <div class="value">${setupTotalStaff}</div>
+            <div class="detail">${setupCrews} crew${setupCrews > 1 ? 's' : ''} × ${setupPeople} people</div>
+            <div class="detail">${setupDaysNeeded} day${setupDaysNeeded > 1 ? 's' : ''} to complete (${setupHourCount} work hrs)</div>
+            <div class="detail" style="color:var(--gold);font-weight:700;margin-top:.3rem">💰 ${fmtMoney(setupLaborCost)} (${setupLaborHours} labor-hrs)</div>
+          </div>
+          <div class="summary-card ice">
+            <div class="icon">🧊</div>
+            <div class="label">Ice Service</div>
+            <div class="value">${iceTotalStaff}</div>
+            <div class="detail">${iceTrucks} truck${iceTrucks > 1 ? 's' : ''} × ${iceStaff} staff</div>
+            <div class="detail">${iceRounds} rounds/day, every ${iceFreq}h</div>
+            <div class="detail">${iceSlotsPerRound >= totalSlots ? '✅ Full coverage' : '⚠️ Need ' + trucksNeeded + ' trucks for full coverage'}</div>
+            <div class="detail" style="color:var(--gold);font-weight:700;margin-top:.3rem">💰 ${fmtMoney(iceLaborCost)} (${iceLaborHours} labor-hrs)</div>
+          </div>
+          <div class="summary-card cleanup">
+            <div class="icon">🧹</div>
+            <div class="label">Cleanup Crew</div>
+            <div class="value">${cleanupTotalStaff}</div>
+            <div class="detail">${cleanupCrews} crew${cleanupCrews > 1 ? 's' : ''} × ${cleanupPeople} people</div>
+            <div class="detail">${cleanupDaysNeeded} day${cleanupDaysNeeded > 1 ? 's' : ''} to complete (${cleanupHourCount} work hrs)</div>
+            <div class="detail" style="color:var(--gold);font-weight:700;margin-top:.3rem">💰 ${fmtMoney(cleanupLaborCost)} (${cleanupLaborHours} labor-hrs)</div>
+          </div>
+          <div class="summary-card total">
+            <div class="icon">👥</div>
+            <div class="label">Total Staff</div>
+            <div class="value">${totalStaff}</div>
+            <div class="detail">${setupTotalStaff} setup + ${iceTotalStaff} ice + ${cleanupTotalStaff} cleanup</div>
+            <div class="detail">Working ${fmtHour(workStart)} – ${fmtHour(workEnd)}</div>
+          </div>
+          <div class="summary-card total" style="border-top-color:#4caf50">
+            <div class="icon">💵</div>
+            <div class="label">Total Labor Cost</div>
+            <div class="value">${fmtMoney(totalLaborCost)}</div>
+            <div class="detail">${totalLaborHours} total labor-hours @ ${fmtMoney(laborRate)}/hr</div>
+            <div class="detail">Setup ${fmtMoney(setupLaborCost)} · Ice ${fmtMoney(iceLaborCost)} · Clean ${fmtMoney(cleanupLaborCost)}</div>
+          </div>
+        `;
+
+                // Show results
+                $('results').classList.add('visible');
+                $('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+
+        })();
+    </script>
+
+</body>
+
+</html>
