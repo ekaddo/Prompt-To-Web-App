@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Aura Glam — N.C. A&T Aggie Homecoming Salon (Static Demo)</title>
+<meta name="description" content="Static client-side demo of the N.C. A&T Aggie Homecoming hair/mani/pedi booking app with an AI style consultant and stylist dashboard." />
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300..900;1,300..900&family=Playfair+Display:ital,wght@0,400..800;1,400..800&family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet" />
+<style>
+  body { font-family: 'Montserrat', 'Plus Jakarta Sans', system-ui, sans-serif; background:#FDFCFB; color:#2D2926; }
+  h1, h2, h3, .font-serif { font-family: 'Montserrat', 'Playfair Display', Georgia, serif; }
+  #toast { transition: opacity .3s ease, transform .3s ease; }
+</style>
+</head>
+<body class="min-h-screen antialiased">
+<div id="root"></div>
+<div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] px-4 py-2.5 rounded-xl bg-[#004684] text-white text-xs font-bold shadow-lg opacity-0 translate-y-3 pointer-events-none"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ===================== DATA (mirrors src/data/initialData.ts) ===================== */
+  const HAIR_SERVICES = [
+    { id:'hair-1', name:'Hollywood Glam Waves', description:'Deep defined red-carpet vintage waves with maximum shine, volume, and humidity-proof setting spray.', durationMinutes:90, basePrice:120, popularForHomecoming:true, image:'https://images.unsplash.com/photo-1560869713-7d0a29430803?auto=format&fit=crop&q=80&w=600' },
+    { id:'hair-2', name:'Elegant Homecoming Updo / Low Chignon', description:'Intricate pinned updo or sleek low textured chignon with face-framing tendrils and accessory placement.', durationMinutes:90, basePrice:135, popularForHomecoming:true, image:'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&q=80&w=600' },
+    { id:'hair-3', name:'Silk Press & Glass Shine Finish', description:'Deep clarifying treatment, steam hydration, precision blow dry, and silky smooth flat iron press with glass finish.', durationMinutes:90, basePrice:110, popularForHomecoming:false, image:'https://images.unsplash.com/photo-1580618672591-eb180b1a973f?auto=format&fit=crop&q=80&w=600' },
+    { id:'hair-4', name:'Half-Up Half-Down Glam Curls', description:'Bouncy tousled curls combined with braided or twisted half-up crown detail and crown volume.', durationMinutes:90, basePrice:115, popularForHomecoming:true, image:'https://images.unsplash.com/photo-1519699047748-de8e457a634e?auto=format&fit=crop&q=80&w=600' },
+    { id:'hair-5', name:'Boho Braided Crown & Soft Waves', description:'Dutch or fishtail braided crown accents cascading into effortless beachy waves with pearl or gem pins.', durationMinutes:90, basePrice:125, popularForHomecoming:false, image:'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&q=80&w=600' },
+    { id:'hair-6', name:'Custom Homecoming Specialty Hair', description:'Tailored custom styling based on your inspiration photo (extensions, pony, loc styling, or creative updos).', durationMinutes:90, basePrice:140, popularForHomecoming:true, image:'https://images.unsplash.com/photo-1527799820374-dcf8d9d4a388?auto=format&fit=crop&q=80&w=600' }
+  ];
+
+  const SPECIFIC_HAIR_NEEDS = [
+    'Installing/Blending Clip-In Extensions', 'Styling with Tape-In / Sew-In Extensions',
+    'Hair Glitter & Sparkle Spray Application', 'Pearl or Crystal Gem Hair Placement',
+    'All-Night Dance Extra-Hold Freeze Spray', 'Crown Teasing & High-Volume Boost',
+    'Crown Braid / Side Braid Accent', 'Thermal Shield & Anti-Frizz Treatment',
+    'Extra Long or Ultra-Thick Hair Care', 'Natural Curl Definition / Diffusing'
+  ];
+
+  const MANICURE_ADDONS = [
+    { id:'mani-none', name:'No Manicure', description:'Hair service only without nail add-on.', price:0, additionalMinutes:0 },
+    { id:'mani-gel', name:'Gel Gloss Manicure', description:'Nail shaping, cuticle care, long-lasting LED gel polish with high-shine topcoat.', price:35, additionalMinutes:30 },
+    { id:'mani-acrylic', name:'Acrylic Full Set w/ Homecoming Art', description:'Full acrylic set, custom length/shape, glitter accents, french tip, or ombre nail art.', price:60, additionalMinutes:45 },
+    { id:'mani-pressons', name:'Custom Press-On Application & Shaping', description:'Professional nail prep, custom alignment, and secure glue bond for client-supplied or salon press-ons.', price:25, additionalMinutes:20 }
+  ];
+
+  const PEDICURE_ADDONS = [
+    { id:'pedi-none', name:'No Pedicure', description:'Skip pedicure service.', price:0, additionalMinutes:0 },
+    { id:'pedi-classic', name:'Classic Homecoming Express Pedicure', description:'Warm foot soak, scrub, nail shaping, massage, and high-shine quick dry polish.', price:40, additionalMinutes:30 },
+    { id:'pedi-gel-deluxe', name:'Deluxe Homecoming Gel Spa Pedicure', description:'Exfoliating rose scrub, hydrating foot mask, hot towel wrap, and non-chip gel polish.', price:65, additionalMinutes:45 },
+    { id:'pedi-reflexology', name:'Relaxation Reflexology & Gloss Pedicure', description:'Extended foot and calf massage to ease homecoming dancing heels, plus glossy polish.', price:50, additionalMinutes:35 }
+  ];
+
+  const NAIL_SHAPES = ['Almond', 'Coffin', 'Square', 'Oval', 'Stiletto', 'Natural'];
+
+  const DEFAULT_SLOTS = () => ([
+    { id:'slot-1', displayLabel:'8:00 AM - 9:30 AM', isBooked:false, isBlocked:false },
+    { id:'slot-2', displayLabel:'9:30 AM - 11:00 AM', isBooked:false, isBlocked:false },
+    { id:'slot-3', displayLabel:'11:00 AM - 12:30 PM', isBooked:false, isBlocked:false },
+    { id:'slot-4', displayLabel:'1:00 PM - 2:30 PM', isBooked:false, isBlocked:false },
+    { id:'slot-5', displayLabel:'2:30 PM - 4:00 PM', isBooked:false, isBlocked:false },
+    { id:'slot-6', displayLabel:'4:00 PM - 5:30 PM', isBooked:false, isBlocked:false },
+    { id:'slot-7', displayLabel:'5:30 PM - 7:00 PM', isBooked:false, isBlocked:false },
+    { id:'slot-8', displayLabel:'7:00 PM - 8:30 PM', isBooked:false, isBlocked:false }
+  ]);
+
+  const SAMPLE_APPOINTMENTS = [
+    {
+      id:'b-101', bookingCode:'HOCO-9201', date:'2026-10-10', timeSlotId:'slot-2', timeSlotLabel:'9:30 AM - 11:00 AM',
+      hairService: HAIR_SERVICES[0], selectedHairNeeds:['Installing/Blending Clip-In Extensions','All-Night Dance Extra-Hold Freeze Spray'],
+      customHairDetails:'Bringing 20-inch clip-in human hair extensions in chocolate brown. Want big soft Hollywood waves brushed out.',
+      selectedMani: MANICURE_ADDONS[1], selectedPedi: PEDICURE_ADDONS[2], nailColorNotes:'Emerald green gel with silver glitter line to match emerald silk dress',
+      client:{ fullName:'Brianna Martinez', phone:'(555) 234-5678', schoolName:'Westlake High School', readyByTime:'3:00 PM' },
+      totalPrice:220, status:'confirmed'
+    },
+    {
+      id:'b-102', bookingCode:'HOCO-9202', date:'2026-10-10', timeSlotId:'slot-5', timeSlotLabel:'2:30 PM - 4:00 PM',
+      hairService: HAIR_SERVICES[1], selectedHairNeeds:['Pearl or Crystal Gem Hair Placement','Crown Teasing & High-Volume Boost'],
+      customHairDetails:'Low textured bun with loose tendrils framing face. Bringing 6 pearl hair pins.',
+      selectedMani: MANICURE_ADDONS[2], selectedPedi: PEDICURE_ADDONS[0], nailColorNotes:'French tip with tiny pearl accents',
+      client:{ fullName:'Sophia Kim', phone:'(555) 876-5432', schoolName:'Oakridge Academy', readyByTime:'5:30 PM' },
+      totalPrice:195, status:'confirmed'
+    }
+  ];
+
+  /* ===================== STATE ===================== */
+  const state = {
+    activeView: 'booking',
+    appointments: SAMPLE_APPOINTMENTS.slice(),
+    timeSlots: DEFAULT_SLOTS(),
+    currentStep: 1,
+    selectedDate: '2026-10-10',
+    selectedSlotId: 'slot-1',
+    hairService: HAIR_SERVICES[0],
+    selectedHairNeeds: [],
+    customHairDetails: '',
+    hairInspirationUrl: '',
+    selectedMani: MANICURE_ADDONS[1],
+    selectedPedi: PEDICURE_ADDONS[0],
+    nailShape: 'Almond',
+    nailColorNotes: '',
+    clientInfo: { fullName:'', phone:'', email:'', instagramHandle:'', schoolName:'Westlake High School', readyByTime:'3:30 PM' },
+    formErrors: {},
+    confirmedBooking: null,
+    aiModalOpen: false,
+    aiLoading: false,
+    aiRecommendation: null,
+    ai: { dressColor:'Emerald Green', dressStyle:'Strapless Sweetheart Satin', vibe:'Vintage Glamour', hairLength:'Long (past shoulders)', hairTexture:'Medium Wavy' },
+    manualModalOpen: false,
+    manual: { name:'', phone:'', slotId:'slot-1', hairServiceId:'hair-1', notes:'', maniId:'mani-none', pediId:'pedi-none' },
+    dashboardFilter: 'all'
+  };
+
+  function syncSlotAvailability() {
+    state.timeSlots.forEach(slot => {
+      const booked = state.appointments.find(a => a.date === state.selectedDate && a.timeSlotId === slot.id && a.status !== 'cancelled');
+      slot.isBooked = !!booked;
+      slot.bookedByClientName = booked ? booked.client.fullName : undefined;
+    });
+  }
+
+  function showToast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.remove('opacity-0', 'translate-y-3');
+    setTimeout(() => el.classList.add('opacity-0', 'translate-y-3'), 2600);
+  }
+
+  /* ===================== FALLBACK AI LOGIC (mirrors server.ts's no-API-key branch) ===================== */
+  function getFallbackRecommendation({ dressColor, dressStyle, vibe, hairLength, hairTexture }) {
+    return {
+      hairStyleSuggestion: `${vibe || 'Glamorous'} Hollywood Waves with a subtle side part`,
+      whyItWorks: `Hollywood waves beautifully frame the neckline of a ${dressColor || 'homecoming'} ${dressStyle || 'gown'}, giving a timeless red-carpet silhouette that lasts through all-night homecoming photos and dancing.`,
+      hairNeedsToSelect: [
+        'Installing/Blending Clip-In Extensions',
+        'All-Night Dance Extra-Hold Freeze Spray',
+        'Pearl or Crystal Gem Hair Placement'
+      ],
+      suggestedManiMatch: `High-shine Gel Gloss with a subtle glitter ombre tip matching your ${dressColor || 'homecoming'} dress.`,
+      suggestedPediMatch: `Deluxe Gel Spa Pedicure in a neutral glossy nude or matching glossy accent polish.`,
+      proStylistTip: `Book your 1.5-hour hair appointment at least 3 hours before pictures so your waves can set in setting clips while getting your dress on.`
+    };
+  }
+
+  /* ===================== HELPERS ===================== */
+  const $ = (sel, root=document) => root.querySelector(sel);
+  const esc = (s) => (s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  function totalPrice() { return state.hairService.basePrice + state.selectedMani.price + state.selectedPedi.price; }
+  function totalMinutes() { return state.hairService.durationMinutes + state.selectedMani.additionalMinutes + state.selectedPedi.additionalMinutes; }
+
+  function canProceedStep(step) {
+    if (step === 1) { const s = state.timeSlots.find(s => s.id === state.selectedSlotId); return !!s && !s.isBooked && !s.isBlocked; }
+    if (step === 2) return !!state.hairService;
+    if (step === 3) return true;
+    if (step === 4) return !!state.clientInfo.fullName && !!state.clientInfo.phone && !!state.clientInfo.email;
+    return true;
+  }
+
+  function validateStep4() {
+    const errors = {};
+    if (!state.clientInfo.fullName.trim()) errors.fullName = 'Full Name is required';
+    if (!state.clientInfo.phone.trim()) errors.phone = 'Phone Number is required for SMS confirmation';
+    if (!state.clientInfo.email.trim() || !state.clientInfo.email.includes('@')) errors.email = 'Valid Email Address is required';
+    state.formErrors = errors;
+    return Object.keys(errors).length === 0;
+  }
+
+  /* ===================== RENDER: HEADER ===================== */
+  function renderHeader() {
+    return `
+    <header class="bg-[#004684] text-white sticky top-0 z-30 shadow-md border-b border-[#00315C]">
+      <div class="bg-[#00315C] text-[#FDB927] py-1 px-4 text-[11px] font-bold tracking-wider text-center flex items-center justify-center gap-2">
+        <span class="uppercase">N.C. A&amp;T Aggie Homecoming 2026</span><span>•</span>
+        <span class="text-white font-mono uppercase">"Aggies DO" Glam Salon</span>
+      </div>
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-[#FDB927] text-[#004684] shadow-md flex items-center justify-center font-bold text-lg shrink-0">✂️</div>
+            <div>
+              <h1 class="text-xl font-extrabold tracking-tight text-white font-serif uppercase">Aura Glam <span class="text-[#004684] font-sans text-xs font-bold uppercase tracking-wider px-2 py-0.5 bg-[#FDB927] rounded-md ml-1">N.C. A&amp;T</span></h1>
+              <p class="text-xs text-blue-100 flex items-center gap-2 mt-0.5"><span>1.5-Hour Hair Slots</span><span class="text-blue-300">•</span><span>Mani &amp; Pedi Add-ons</span></p>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+            <button data-action="open-ai" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-[#FDB927] text-[#004684] hover:bg-amber-300 transition-all cursor-pointer shadow-sm uppercase tracking-wider">
+              ✨ <span>Match Dress with AI</span>
+            </button>
+            <div class="bg-[#00315C] p-1 rounded-xl border border-blue-800 flex items-center">
+              <button data-action="view-booking" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${state.activeView === 'booking' ? 'bg-[#FDB927] text-[#004684] shadow-xs' : 'text-blue-100 hover:text-white hover:bg-blue-800/60'}">📅 <span>Book Hair</span></button>
+              <button data-action="view-dashboard" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${state.activeView === 'dashboard' ? 'bg-[#FDB927] text-[#004684] shadow-xs' : 'text-blue-100 hover:text-white hover:bg-blue-800/60'}">
+                ✅ <span>Stylist Portal</span>
+                ${state.appointments.length > 0 ? `<span class="ml-1 px-1.5 py-0.2 text-[10px] bg-white text-[#004684] rounded-full font-extrabold">${state.appointments.length}</span>` : ''}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>`;
+  }
+
+  /* ===================== RENDER: STEP 1 — DATE & SLOT ===================== */
+  function renderStep1() {
+    const dates = [
+      { date:'2026-10-10', label:'Saturday, Oct 10', subtitle:'Main Aggie Homecoming' },
+      { date:'2026-10-09', label:'Friday, Oct 9', subtitle:'Friday Pep Rally & Gala' },
+      { date:'2026-10-17', label:'Saturday, Oct 17', subtitle:'Post-Homecoming Events' }
+    ];
+    const availableCount = state.timeSlots.filter(s => !s.isBooked && !s.isBlocked).length;
+    return `
+    <div class="space-y-6">
+      <div class="bg-white p-5 rounded-2xl border border-stone-200 shadow-sm">
+        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-[#004684] text-xs font-bold mb-2">⏱ <span>Strict 1.5-Hour Duration Per Hair Appointment</span></div>
+        <h2 class="text-xl font-extrabold font-serif text-[#004684] uppercase">Step 1: Select Homecoming Date &amp; Time Slot</h2>
+        <p class="text-xs text-stone-600 mt-1">Every hair appointment is allocated a dedicated 1.5-hour time window to guarantee perfection for N.C. A&amp;T Homecoming.</p>
+      </div>
+
+      <div class="bg-white rounded-2xl p-5 border border-stone-200 shadow-xs space-y-3">
+        <label class="block text-xs font-bold text-[#004684] uppercase tracking-wider">📅 Homecoming Event Date</label>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          ${dates.map(d => `
+            <button data-action="pick-date" data-date="${d.date}" class="p-3.5 rounded-xl border text-left transition-all cursor-pointer ${state.selectedDate === d.date ? 'border-[#004684] bg-blue-50/80 ring-2 ring-[#004684] text-[#004684] shadow-xs font-bold' : 'border-stone-200 hover:border-[#004684] hover:bg-slate-50 text-stone-700'}">
+              <div class="flex items-center justify-between"><span class="font-bold text-sm">${d.label}</span>${state.selectedDate === d.date ? '<span>✓</span>' : ''}</div>
+              <span class="text-xs text-stone-500 mt-0.5 block">${d.subtitle}</span>
+            </button>`).join('')}
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl p-5 border border-stone-200 shadow-xs space-y-4">
+        <h3 class="font-extrabold text-[#004684] text-sm uppercase flex items-center gap-2"><span>Available 1.5-Hour Slots</span><span class="text-xs font-bold">(${availableCount} available)</span></h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+          ${state.timeSlots.map(slot => {
+            const isSelected = state.selectedSlotId === slot.id;
+            const isUnavailable = slot.isBooked || slot.isBlocked;
+            return `
+            <button data-action="pick-slot" data-slot="${slot.id}" ${isUnavailable ? 'disabled' : ''} class="p-3.5 rounded-xl border text-left transition-all flex flex-col justify-between min-h-[82px] cursor-pointer ${isUnavailable ? 'bg-slate-100 border-slate-200 text-stone-400 cursor-not-allowed opacity-60' : isSelected ? 'bg-[#004684] border-[#00315C] text-white shadow-md ring-2 ring-[#FDB927] scale-[1.02]' : 'bg-white border-stone-200 hover:border-[#004684] hover:bg-blue-50/50 text-stone-800'}">
+              <div class="flex items-center justify-between w-full">
+                <span class="text-xs font-bold uppercase tracking-wider opacity-90">1.5 Hours</span>
+                ${isUnavailable ? '<span class="px-1.5 py-0.5 text-[10px] bg-slate-200 text-stone-600 font-semibold rounded">Booked</span>'
+                  : isSelected ? '<span class="px-1.5 py-0.5 text-[10px] bg-[#FDB927] text-[#004684] font-extrabold rounded">✓ Selected</span>'
+                  : '<span class="px-1.5 py-0.5 text-[10px] bg-blue-50 text-[#004684] font-bold rounded border border-blue-200">Open</span>'}
+              </div>
+              <div class="mt-2">
+                <div class="text-sm font-extrabold ${isSelected ? 'text-[#FDB927]' : 'text-[#004684]'}">${slot.displayLabel}</div>
+                ${slot.bookedByClientName ? `<div class="text-[11px] ${isSelected ? 'text-blue-200' : 'text-stone-400'} truncate mt-0.5">Reserved (${esc(slot.bookedByClientName)})</div>` : ''}
+              </div>
+            </button>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>`;
+  }
+
+  /* ===================== RENDER: STEP 2 — HAIR ===================== */
+  function renderStep2() {
+    return `
+    <div class="space-y-6">
+      <div class="bg-white p-5 rounded-2xl border border-stone-200 shadow-sm">
+        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-[#004684] text-xs font-bold mb-2">✂️ <span>Base Duration: 1.5 Hours ($${state.hairService.basePrice})</span></div>
+        <h2 class="text-xl font-extrabold font-serif text-[#004684] uppercase">Step 2: Choose Hair Style &amp; Specify Your Hair Needs</h2>
+        <p class="text-xs text-stone-600 mt-1">Select your primary homecoming look and check off any specific hair service techniques or custom requirements.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        ${HAIR_SERVICES.map(service => {
+          const isSelected = state.hairService.id === service.id;
+          return `
+          <div data-action="pick-hair" data-hair="${service.id}" class="rounded-2xl border transition-all overflow-hidden cursor-pointer flex flex-col justify-between ${isSelected ? 'border-[#004684] bg-blue-50/60 ring-2 ring-[#004684] shadow-sm' : 'border-stone-200 bg-white hover:border-[#004684]'}">
+            <div class="relative h-36 bg-stone-100 overflow-hidden">
+              <img src="${service.image}" alt="${esc(service.name)}" class="w-full h-full object-cover" referrerpolicy="no-referrer" />
+              <div class="absolute inset-0 bg-gradient-to-t from-[#00315C]/80 via-transparent to-transparent"></div>
+              ${service.popularForHomecoming ? '<span class="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full bg-[#FDB927] text-[#004684] text-[10px] font-extrabold uppercase shadow-xs">✨ Aggie Favorite</span>' : ''}
+              <span class="absolute bottom-2 right-2.5 px-2.5 py-0.5 rounded-md bg-[#004684] text-[#FDB927] text-xs font-extrabold border border-blue-900">$${service.basePrice}</span>
+            </div>
+            <div class="p-4 flex-1 flex flex-col justify-between">
+              <div>
+                <div class="flex items-start justify-between gap-2">
+                  <h3 class="font-extrabold text-sm ${isSelected ? 'text-[#004684]' : 'text-stone-800'}">${service.name}</h3>
+                  ${isSelected ? '<span class="w-5 h-5 rounded-full bg-[#004684] text-[#FDB927] flex items-center justify-center shrink-0 text-xs">✓</span>' : ''}
+                </div>
+                <p class="text-xs text-stone-600 mt-1 line-clamp-2">${service.description}</p>
+              </div>
+              <div class="mt-3 pt-2.5 border-t border-stone-100 flex items-center justify-between text-xs text-stone-500 font-medium">
+                <span>1.5 Hours Slot</span><span class="${isSelected ? 'text-[#004684] font-bold' : ''}">${isSelected ? 'Selected' : 'Click to select'}</span>
+              </div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+
+      <div class="bg-white rounded-2xl p-5 border border-stone-200 shadow-xs space-y-4">
+        <h3 class="font-extrabold text-[#004684] text-sm uppercase">Specific Hair Services &amp; Technique Needs</h3>
+        <p class="text-xs text-stone-500">Check any specific techniques, extensions, or accessories your stylist should prepare for.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+          ${SPECIFIC_HAIR_NEEDS.map(need => {
+            const isChecked = state.selectedHairNeeds.includes(need);
+            return `
+            <label class="p-3 rounded-xl border text-xs font-medium cursor-pointer flex items-center gap-2.5 select-none ${isChecked ? 'border-[#004684] bg-blue-50/80 text-[#004684] font-bold' : 'border-stone-200 text-stone-700 bg-slate-50/50'}">
+              <input type="checkbox" data-action="toggle-need" data-need="${esc(need)}" ${isChecked ? 'checked' : ''} class="w-4 h-4 rounded accent-[#004684]" />
+              <span class="leading-snug">${need}</span>
+            </label>`;
+          }).join('')}
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl p-5 border border-stone-200 shadow-xs space-y-4">
+        <label class="block text-xs font-bold text-[#004684] uppercase tracking-wider">What type of hair services do you need? (Custom Hair Details)</label>
+        <textarea data-action="custom-hair" rows="3" placeholder="E.g., I have waist-length thick 4c hair, bringing 22-inch clip-in extensions..." class="w-full p-3.5 text-xs text-stone-800 bg-slate-50 border border-stone-200 rounded-xl focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#004684]">${esc(state.customHairDetails)}</textarea>
+        <div class="pt-2 border-t border-stone-100 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <span class="text-xs font-semibold text-stone-700 shrink-0">📷 Inspiration Image URL (Optional):</span>
+          <input type="url" data-action="inspo-url" value="${esc(state.hairInspirationUrl)}" placeholder="https://pinterest.com/pin/..." class="flex-1 px-3 py-1.5 text-xs text-stone-800 bg-slate-50 border border-stone-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#004684]" />
+        </div>
+      </div>
+    </div>`;
+  }
+
+  /* ===================== RENDER: STEP 3 — MANI/PEDI ===================== */
+  function renderStep3() {
+    const addonCard = (item, kind) => {
+      const selected = kind === 'mani' ? state.selectedMani.id === item.id : state.selectedPedi.id === item.id;
+      return `
+      <div data-action="pick-${kind}" data-id="${item.id}" class="p-4 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${selected ? 'border-[#004684] bg-blue-50/80 ring-2 ring-[#004684] shadow-xs' : 'border-stone-200 hover:border-[#004684] hover:bg-slate-50'}">
+        <div>
+          <div class="flex items-start justify-between gap-2">
+            <h4 class="font-extrabold text-sm text-[#004684]">${item.name}</h4>
+            <span class="font-bold text-xs text-[#004684] bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">${item.price === 0 ? 'No Add-On' : '+$' + item.price}</span>
+          </div>
+          <p class="text-xs text-stone-600 mt-1">${item.description}</p>
+        </div>
+        <div class="mt-3 pt-2 border-t border-stone-100 flex items-center justify-between text-[11px] text-stone-500">
+          <span>${item.additionalMinutes > 0 ? '+' + item.additionalMinutes + ' mins' : '0 mins'}</span>
+          ${selected ? '<span class="text-[#004684] font-extrabold">✓ Selected</span>' : ''}
+        </div>
+      </div>`;
+    };
+    return `
+    <div class="space-y-6">
+      <div class="bg-white p-5 rounded-2xl border border-stone-200 shadow-sm">
+        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-[#004684] text-xs font-bold mb-2">✨ <span>Complete Your Aggie Homecoming Glam</span></div>
+        <h2 class="text-xl font-extrabold font-serif text-[#004684] uppercase">Step 3: Manicure &amp; Pedicure Add-Ons</h2>
+        <p class="text-xs text-stone-600 mt-1">Add matching manicures and pedicures to your 1.5-hour hair appointment.</p>
+      </div>
+      <div class="bg-white rounded-2xl p-5 border border-stone-200 shadow-xs space-y-3">
+        <label class="text-xs font-bold text-[#004684] uppercase tracking-wider">Select Manicure Add-On</label>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${MANICURE_ADDONS.map(m => addonCard(m, 'mani')).join('')}</div>
+      </div>
+      <div class="bg-white rounded-2xl p-5 border border-stone-200 shadow-xs space-y-3">
+        <label class="text-xs font-bold text-[#004684] uppercase tracking-wider">Select Pedicure Add-On</label>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${PEDICURE_ADDONS.map(p => addonCard(p, 'pedi')).join('')}</div>
+      </div>
+      ${(state.selectedMani.price > 0 || state.selectedPedi.price > 0) ? `
+      <div class="bg-white rounded-2xl p-5 border border-stone-200 shadow-xs space-y-4">
+        <h3 class="font-extrabold text-[#004684] text-sm uppercase">Nail Shape &amp; Aggie Dress Color Matching</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-stone-700 mb-1.5">Preferred Nail Shape:</label>
+            <div class="flex flex-wrap gap-2">
+              ${NAIL_SHAPES.map(shape => `<button data-action="pick-shape" data-shape="${shape}" class="px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${state.nailShape === shape ? 'bg-[#004684] text-[#FDB927] border-[#00315C]' : 'bg-slate-50 text-stone-700 border-stone-200 hover:bg-slate-100'}">${shape}</button>`).join('')}
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-stone-700 mb-1.5">Nail Polish / Art Notes (Matching Dress):</label>
+            <input type="text" data-action="nail-notes" value="${esc(state.nailColorNotes)}" placeholder="E.g., Aggie Gold polish with French navy tips..." class="w-full px-3 py-2 text-xs border border-stone-200 bg-slate-50 rounded-xl focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#004684]" />
+          </div>
+        </div>
+      </div>` : ''}
+    </div>`;
+  }
+
+  /* ===================== RENDER: STEP 4 — CONTACT ===================== */
+  function renderStep4() {
+    const err = state.formErrors;
+    const field = (key, label, type, placeholder, required) => `
+      <div>
+        <label class="block text-xs font-bold text-[#004684] uppercase tracking-wider mb-1">${label}${required ? ' <span class="text-rose-600">*</span>' : ''}</label>
+        <input type="${type}" data-action="client-field" data-field="${key}" value="${esc(state.clientInfo[key])}" placeholder="${placeholder}" class="w-full px-3.5 py-2.5 text-xs border rounded-xl focus:outline-none focus:ring-1 transition-all ${err[key] ? 'border-rose-400 bg-rose-50/50 focus:ring-rose-500' : 'border-stone-200 bg-slate-50 focus:bg-white focus:ring-[#004684]'}" />
+        ${err[key] ? `<p class="text-[11px] text-rose-600 mt-1">${err[key]}</p>` : ''}
+      </div>`;
+    return `
+    <div class="space-y-6">
+      <div class="bg-white p-5 rounded-2xl border border-stone-200 shadow-sm">
+        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-[#004684] text-xs font-bold mb-2">✓ <span>Step 4 of 4: Client &amp; Homecoming Details</span></div>
+        <h2 class="text-xl font-extrabold font-serif text-[#004684] uppercase">Contact &amp; Aggie Homecoming Schedule</h2>
+        <p class="text-xs text-stone-600 mt-1">We send instant booking confirmations so your N.C. A&amp;T Homecoming day runs smoothly.</p>
+      </div>
+      <div class="bg-white rounded-2xl p-5 border border-stone-200 shadow-xs space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          ${field('fullName', 'Full Name', 'text', 'E.g. Maya Williams', true)}
+          ${field('phone', 'Mobile Phone (SMS Confirmation)', 'tel', '(336) 000-0000', true)}
+          ${field('email', 'Email Address', 'email', 'aggie@ncat.edu', true)}
+          ${field('instagramHandle', 'Instagram Handle (Optional)', 'text', '@aggie_pride2026', false)}
+        </div>
+        <div class="pt-3 border-t border-stone-100 grid grid-cols-1 md:grid-cols-2 gap-4">
+          ${field('schoolName', 'University / Organization Name', 'text', 'North Carolina A&T State University', false)}
+          ${field('readyByTime', 'Target "Ready By" Time for Photos/Gala', 'text', 'E.g. 3:30 PM', false)}
+        </div>
+      </div>
+    </div>`;
+  }
+
+  /* ===================== RENDER: SUMMARY SIDEBAR ===================== */
+  function renderSummary() {
+    const mins = totalMinutes();
+    const h = Math.floor(mins / 60), m = mins % 60;
+    const durationText = m > 0 ? `${h}h ${m}m` : `${h}h`;
+    const canProceed = canProceedStep(state.currentStep);
+    return `
+    <div class="bg-white border border-stone-200 rounded-2xl p-5 shadow-md space-y-5 sticky top-20">
+      <div class="flex items-center justify-between pb-3 border-b border-stone-200">
+        <div><h3 class="font-serif text-lg font-extrabold text-[#004684] uppercase">Appointment Summary</h3><p class="text-[11px] text-stone-500 font-semibold">N.C. A&amp;T Homecoming Glam Package</p></div>
+        <span class="px-2.5 py-1 rounded-full bg-[#004684] text-[#FDB927] text-xs font-bold">Step ${state.currentStep} of 4</span>
+      </div>
+      <div class="space-y-3 text-xs">
+        <div class="bg-slate-50 p-3 rounded-xl border border-stone-200 space-y-1">
+          <div class="text-stone-500 font-medium">📅 Date &amp; 1.5h Slot:</div>
+          <div class="text-[#004684] font-bold text-sm">${state.selectedDate}</div>
+          <div class="text-stone-800 font-medium">⏱ ${(state.timeSlots.find(s => s.id === state.selectedSlotId) || {}).displayLabel || 'No slot selected yet'}</div>
+        </div>
+        <div class="bg-slate-50 p-3 rounded-xl border border-stone-200 space-y-1">
+          <div class="flex items-center justify-between"><span class="text-stone-500 font-medium">✂️ Hair Style (1.5h):</span><span class="font-bold text-[#004684]">$${state.hairService.basePrice}</span></div>
+          <div class="font-semibold text-stone-900">${state.hairService.name}</div>
+          ${state.selectedHairNeeds.length ? `<div class="mt-1.5 pt-1.5 border-t border-stone-200 flex flex-wrap gap-1">${state.selectedHairNeeds.slice(0,3).map(n => `<span class="px-1.5 py-0.5 rounded text-[10px] bg-white text-[#004684] border border-stone-200 font-bold">${n}</span>`).join('')}${state.selectedHairNeeds.length > 3 ? `<span class="text-[10px] text-stone-500">+${state.selectedHairNeeds.length - 3} more</span>` : ''}</div>` : ''}
+        </div>
+        <div class="bg-slate-50 p-3 rounded-xl border border-stone-200 space-y-2">
+          <div class="flex items-center justify-between"><span class="text-stone-600">💅 Manicure:</span><span class="font-semibold text-stone-900">${state.selectedMani.price === 0 ? 'None' : '+$' + state.selectedMani.price}</span></div>
+          ${state.selectedMani.price > 0 ? `<div class="text-[11px] text-stone-600 pl-5">${state.selectedMani.name}</div>` : ''}
+          <div class="flex items-center justify-between pt-1 border-t border-stone-200"><span class="text-stone-600">🦶 Pedicure:</span><span class="font-semibold text-stone-900">${state.selectedPedi.price === 0 ? 'None' : '+$' + state.selectedPedi.price}</span></div>
+          ${state.selectedPedi.price > 0 ? `<div class="text-[11px] text-stone-600 pl-5">${state.selectedPedi.name}</div>` : ''}
+        </div>
+      </div>
+      <div class="pt-3 border-t border-stone-200 space-y-2">
+        <div class="flex items-center justify-between text-xs text-stone-500"><span>Estimated Duration:</span><span class="font-semibold text-stone-800">${durationText} total</span></div>
+        <div class="flex items-baseline justify-between"><span class="text-sm font-bold text-stone-700">Total Price:</span><span class="text-2xl font-black text-[#004684] font-serif">$${totalPrice()}</span></div>
+      </div>
+      <div class="pt-2 space-y-2">
+        ${state.currentStep < 4
+          ? `<button data-action="next-step" ${!canProceed ? 'disabled' : ''} class="w-full py-3.5 px-4 rounded-xl font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer ${canProceed ? 'bg-[#004684] text-white hover:bg-[#00315C] shadow-md' : 'bg-stone-100 text-stone-400 border border-stone-200 cursor-not-allowed'}"><span>Next Step</span> →</button>`
+          : `<button data-action="confirm-booking" ${!canProceed ? 'disabled' : ''} class="w-full py-3.5 px-4 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer ${canProceed ? 'bg-[#FDB927] text-[#004684] hover:bg-amber-300 shadow-md' : 'bg-stone-100 text-stone-400 border border-stone-200 cursor-not-allowed'}">✓ <span>Confirm &amp; Reserve Appointment</span></button>`}
+        ${state.currentStep > 1 ? `<button data-action="prev-step" class="w-full py-2 px-3 rounded-xl text-xs font-semibold text-stone-600 hover:text-[#004684] hover:bg-slate-100 transition-all flex items-center justify-center gap-1.5 cursor-pointer">← <span>Previous Step</span></button>` : ''}
+      </div>
+      <div class="pt-2 text-center text-[10px] text-stone-500">🛡 No advance payment required. Pay at salon.</div>
+    </div>`;
+  }
+
+  /* ===================== RENDER: BOOKING WIZARD ===================== */
+  function renderBookingView() {
+    const steps = [
+      { step:1, label:'1. Date & 1.5h Slot', icon:'⏱' },
+      { step:2, label:'2. Hair & Needs', icon:'✂️' },
+      { step:3, label:'3. Mani & Pedi', icon:'✨' },
+      { step:4, label:'4. Contact & Schedule', icon:'✅' }
+    ];
+    const stepHtml = { 1: renderStep1, 2: renderStep2, 3: renderStep3, 4: renderStep4 }[state.currentStep]();
+    return `
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <div class="lg:col-span-8 space-y-6">
+        <div class="bg-white border border-stone-200 rounded-2xl p-4 shadow-sm">
+          <div class="flex items-center justify-between text-xs font-medium mb-2.5 text-stone-500">
+            <span class="text-[#004684] font-serif font-extrabold text-sm uppercase tracking-wide">N.C. A&amp;T Homecoming Glam Booking</span>
+            <span class="text-stone-600 font-bold">Step ${state.currentStep} of 4</span>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            ${steps.map(item => {
+              const isActive = state.currentStep === item.step;
+              const isCompleted = state.currentStep > item.step;
+              return `
+              <button data-action="goto-step" data-step="${item.step}" class="p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${isActive ? 'bg-[#004684] text-[#FDB927] border-[#00315C] font-extrabold shadow-sm' : isCompleted ? 'bg-blue-50 text-[#004684] border-blue-200 font-bold' : 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100'}">
+                <div class="flex items-center justify-between"><span>${item.icon}</span><span class="text-[10px] font-mono font-bold">${isCompleted ? '✓' : '0' + item.step}</span></div>
+                <span class="text-[11px] truncate mt-1">${item.label}</span>
+              </button>`;
+            }).join('')}
+          </div>
+        </div>
+        ${stepHtml}
+      </div>
+      <div class="lg:col-span-4">${renderSummary()}</div>
+    </div>`;
+  }
+
+  /* ===================== RENDER: STYLIST DASHBOARD ===================== */
+  function renderDashboardView() {
+    const dateAppts = state.appointments.filter(a => a.date === state.selectedDate);
+    const filtered = state.dashboardFilter === 'all' ? dateAppts : dateAppts.filter(a => a.status === state.dashboardFilter);
+    const totalRevenue = dateAppts.reduce((sum, a) => sum + a.totalPrice, 0);
+    const maniCount = dateAppts.filter(a => a.selectedMani && a.selectedMani.price > 0).length;
+    const pediCount = dateAppts.filter(a => a.selectedPedi && a.selectedPedi.price > 0).length;
+
+    return `
+    <div class="space-y-6">
+      <div class="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-[#004684] text-xs font-extrabold mb-2">✂️ <span>Aggie Stylist Schedule Portal</span></div>
+          <h2 class="text-2xl font-extrabold font-serif text-[#004684] uppercase">N.C. A&amp;T Homecoming Schedule &amp; Slot Manager</h2>
+          <p class="text-xs text-stone-600 mt-1">Manage 1.5-hour hair slots, client requests, add-ons, and daily revenue.</p>
+        </div>
+        <button data-action="open-manual" class="px-4 py-2.5 rounded-xl bg-[#004684] text-[#FDB927] font-extrabold text-xs uppercase tracking-wider hover:bg-[#00315C] transition-all flex items-center gap-2 cursor-pointer shadow-md">+ <span>Add Manual / Phone Booking</span></button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="bg-white p-4 rounded-2xl border border-stone-200 shadow-xs flex flex-col justify-between">
+          <label class="block text-xs font-bold text-[#004684] uppercase tracking-wider mb-2">📅 Schedule Date:</label>
+          <input type="date" data-action="dash-date" value="${state.selectedDate}" class="w-full px-3 py-2 text-xs border border-stone-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-[#004684] text-[#004684] font-bold bg-slate-50" />
+          <span class="text-[11px] text-stone-500 mt-2">Showing ${dateAppts.length} bookings on this date</span>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border border-stone-200 shadow-xs flex items-center gap-3.5">
+          <div class="w-12 h-12 rounded-xl bg-amber-50 text-[#004684] border border-amber-200 flex items-center justify-center shrink-0">💲</div>
+          <div><span class="text-xs font-bold text-stone-500 block uppercase">Day Revenue</span><span class="text-2xl font-black text-[#004684] font-serif">$${totalRevenue}</span></div>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border border-stone-200 shadow-xs flex items-center gap-3.5">
+          <div class="w-12 h-12 rounded-xl bg-[#004684] text-[#FDB927] flex items-center justify-center shrink-0">⏱</div>
+          <div><span class="text-xs font-bold text-stone-500 block uppercase">1.5h Hair Slots</span><span class="text-2xl font-black text-[#004684] font-serif">${dateAppts.length} / ${state.timeSlots.length}</span></div>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border border-stone-200 shadow-xs flex items-center gap-3.5">
+          <div class="w-12 h-12 rounded-xl bg-blue-50 text-[#004684] border border-blue-200 flex items-center justify-center shrink-0">✨</div>
+          <div><span class="text-xs font-bold text-stone-500 block uppercase">Beauty Add-ons</span><span class="text-xl font-black text-[#004684] font-serif">${maniCount} Mani • ${pediCount} Pedi</span></div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-stone-200 shadow-xs overflow-hidden">
+        <div class="p-4 bg-slate-50 border-b border-stone-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <h3 class="font-extrabold text-[#004684] text-sm uppercase">1.5-Hour Appointment Master Schedule (${state.selectedDate})</h3>
+          <div class="flex items-center gap-2 text-xs">
+            <span class="text-stone-500 font-medium">Filter status:</span>
+            <select data-action="dash-filter" class="px-2.5 py-1 border border-stone-200 rounded-lg bg-white text-stone-800 focus:outline-none focus:ring-1 focus:ring-[#004684]">
+              ${['all','confirmed','in_progress','completed','cancelled'].map(s => `<option value="${s}" ${state.dashboardFilter === s ? 'selected' : ''}>${s === 'all' ? 'All Bookings' : s[0].toUpperCase() + s.slice(1).replace('_',' ')}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="divide-y divide-stone-100">
+          ${state.timeSlots.map(slot => {
+            const appt = filtered.find(a => a.timeSlotId === slot.id);
+            const applicable = dateAppts.find(a => a.timeSlotId === slot.id);
+            return `
+            <div class="p-4 transition-colors flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 ${applicable ? 'bg-blue-50/40' : 'bg-white'}">
+              <div class="w-full lg:w-48 shrink-0 flex items-center justify-between lg:block">
+                <span class="px-2.5 py-1 bg-[#004684] text-[#FDB927] text-xs font-extrabold rounded-md uppercase">${slot.displayLabel}</span>
+                <button data-action="toggle-block" data-slot="${slot.id}" class="mt-1 text-[11px] font-semibold flex items-center gap-1 cursor-pointer ${slot.isBlocked ? 'text-rose-600' : 'text-stone-400 hover:text-stone-700'}">${slot.isBlocked ? '🔒 Blocked' : '🔓 Block Slot'}</button>
+              </div>
+              ${appt ? `
+              <div class="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                <div class="space-y-1">
+                  <div class="flex items-center gap-2"><strong class="text-[#004684] text-sm font-extrabold">${esc(appt.client.fullName)}</strong><span class="px-2 py-0.5 text-[10px] bg-blue-50 text-[#004684] font-mono rounded border border-blue-200 font-bold">${appt.bookingCode}</span></div>
+                  <p class="text-stone-600 font-medium">📞 ${esc(appt.client.phone)}</p>
+                  ${appt.client.schoolName ? `<p class="text-stone-600 font-bold">🏫 ${esc(appt.client.schoolName)}</p>` : ''}
+                  ${appt.client.readyByTime ? `<p class="text-[#004684] font-bold bg-amber-50 inline-block px-1.5 py-0.5 rounded border border-amber-200">⏰ Ready By: ${esc(appt.client.readyByTime)}</p>` : ''}
+                </div>
+                <div class="space-y-1">
+                  <div class="font-extrabold text-[#004684]">✂️ ${appt.hairService.name}</div>
+                  ${appt.selectedHairNeeds.length ? `<div class="flex flex-wrap gap-1 pt-1">${appt.selectedHairNeeds.map(n => `<span class="px-1.5 py-0.5 text-[10px] bg-white text-[#004684] rounded font-bold border border-blue-200">${n}</span>`).join('')}</div>` : ''}
+                  ${appt.customHairDetails ? `<div class="text-stone-600 bg-white p-2 rounded-lg border border-stone-200 italic mt-1 text-[11px]">"${esc(appt.customHairDetails)}"</div>` : ''}
+                </div>
+                <div class="space-y-2 flex flex-col justify-between">
+                  <div class="space-y-1">
+                    ${appt.selectedMani && appt.selectedMani.price > 0 ? `<p class="text-stone-900 font-semibold">💅 Mani: ${appt.selectedMani.name}</p>` : ''}
+                    ${appt.selectedPedi && appt.selectedPedi.price > 0 ? `<p class="text-stone-900 font-semibold">🦶 Pedi: ${appt.selectedPedi.name}</p>` : ''}
+                    ${(!appt.selectedMani || appt.selectedMani.price === 0) && (!appt.selectedPedi || appt.selectedPedi.price === 0) ? '<span class="text-stone-400">Hair only (No nail add-ons)</span>' : ''}
+                    <div class="font-extrabold text-[#004684] pt-1">Total: $${appt.totalPrice}</div>
+                  </div>
+                  <div class="flex items-center gap-2 pt-2 border-t border-stone-200">
+                    <select data-action="update-status" data-id="${appt.id}" class="px-2 py-1 text-[11px] font-bold rounded-lg border border-stone-200 bg-white focus:outline-none text-[#004684]">
+                      ${['confirmed','in_progress','completed','cancelled'].map(s => `<option value="${s}" ${appt.status === s ? 'selected' : ''}>${s[0].toUpperCase() + s.slice(1).replace('_',' ')}</option>`).join('')}
+                    </select>
+                    <button data-action="delete-appt" data-id="${appt.id}" class="p-1 rounded text-stone-400 hover:text-rose-600 transition-colors cursor-pointer" title="Cancel/Delete">🗑</button>
+                  </div>
+                </div>
+              </div>` : `
+              <div class="flex-1 text-xs text-stone-400 flex items-center justify-between py-2">
+                <span>${slot.isBlocked ? 'This 1.5-hour slot is blocked for break or private booking.' : 'Open 1.5-hour slot available for Aggie clients.'}</span>
+                ${!slot.isBlocked ? '<span class="px-2 py-1 bg-amber-50 text-[#004684] border border-amber-200 font-bold rounded text-[11px]">Available</span>' : ''}
+              </div>`}
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>`;
+  }
+
+  /* ===================== RENDER: AI MODAL ===================== */
+  function renderAiModal() {
+    if (!state.aiModalOpen) return '';
+    const rec = state.aiRecommendation;
+    return `
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs" data-action="ai-backdrop">
+      <div class="bg-white border border-stone-200 rounded-3xl max-w-2xl w-full p-6 text-[#0F172A] shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+        <div class="flex items-center justify-between pb-3 border-b border-stone-200">
+          <div class="flex items-center gap-2.5">
+            <div class="w-10 h-10 rounded-xl bg-[#004684] text-[#FDB927] flex items-center justify-center font-bold">✨</div>
+            <div><h3 class="font-serif text-lg font-extrabold text-[#004684] uppercase">AI Aggie Style Consultant</h3><p class="text-xs text-stone-600">Match your hair style &amp; nails to your Homecoming dress</p></div>
+          </div>
+          <button data-action="close-ai" class="p-1.5 rounded-lg text-stone-400 hover:text-[#004684] hover:bg-slate-100 cursor-pointer">✕</button>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+          <div><label class="block text-[#004684] font-bold mb-1">Dress Color:</label><input type="text" data-action="ai-field" data-field="dressColor" value="${esc(state.ai.dressColor)}" class="w-full px-3 py-2 bg-slate-50 border border-stone-200 rounded-xl text-stone-800 focus:outline-none focus:ring-1 focus:ring-[#004684]" /></div>
+          <div><label class="block text-[#004684] font-bold mb-1">Dress Style / Neckline:</label><input type="text" data-action="ai-field" data-field="dressStyle" value="${esc(state.ai.dressStyle)}" class="w-full px-3 py-2 bg-slate-50 border border-stone-200 rounded-xl text-stone-800 focus:outline-none focus:ring-1 focus:ring-[#004684]" /></div>
+          <div><label class="block text-[#004684] font-bold mb-1">Homecoming Vibe:</label>
+            <select data-action="ai-field" data-field="vibe" class="w-full px-3 py-2 bg-slate-50 border border-stone-200 rounded-xl text-stone-800 focus:outline-none focus:ring-1 focus:ring-[#004684]">
+              ${['Aggie Royalty Glam','Hollywood Red Carpet','Romantic & Soft Updo','Edgy Modern & Sleek'].map(v => `<option ${state.ai.vibe === v ? 'selected' : ''}>${v}</option>`).join('')}
+            </select>
+          </div>
+          <div><label class="block text-[#004684] font-bold mb-1">Your Hair Length:</label>
+            <select data-action="ai-field" data-field="hairLength" class="w-full px-3 py-2 bg-slate-50 border border-stone-200 rounded-xl text-stone-800 focus:outline-none focus:ring-1 focus:ring-[#004684]">
+              ${['Short (Bob / Pixie)','Medium (Shoulder Length)','Long (Mid-back)','Extra Long / Extensions'].map(v => `<option ${state.ai.hairLength === v ? 'selected' : ''}>${v}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <button data-action="ai-generate" class="w-full py-3.5 px-4 rounded-xl font-extrabold text-xs uppercase tracking-wider bg-[#004684] text-[#FDB927] hover:bg-[#00315C] transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer">
+          ${state.aiLoading ? '<span>Analyzing Dress &amp; Aggie Vibe...</span>' : '<span>🪄 Get AI Hair &amp; Nail Recommendation</span>'}
+        </button>
+        <p class="text-center text-[10px] text-stone-400">Demo mode: using the app's built-in fallback style logic (no API key). The real app calls Gemini 2.5 Flash when configured.</p>
+        ${rec ? `
+        <div class="bg-slate-50 border border-stone-200 rounded-2xl p-5 space-y-4 text-xs">
+          <div class="flex items-start justify-between">
+            <div><span class="text-[10px] uppercase font-bold text-stone-500 tracking-wider">AI Suggested Style</span><h4 class="text-lg font-serif font-extrabold text-[#004684]">${rec.hairStyleSuggestion}</h4></div>
+            <span class="px-2.5 py-1 bg-[#FDB927] text-[#004684] border border-amber-300 rounded-full font-extrabold text-[11px] uppercase">Perfect Match</span>
+          </div>
+          <p class="text-stone-700 leading-relaxed bg-white p-3 rounded-xl border border-stone-200"><strong class="text-[#004684]">Why it works:</strong> ${rec.whyItWorks}</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="bg-white p-3 rounded-xl border border-stone-200 space-y-1"><span class="font-extrabold text-[#004684]">Suggested Manicure:</span><p class="text-stone-700">${rec.suggestedManiMatch}</p></div>
+            <div class="bg-white p-3 rounded-xl border border-stone-200 space-y-1"><span class="font-extrabold text-[#004684]">Suggested Pedicure:</span><p class="text-stone-700">${rec.suggestedPediMatch}</p></div>
+          </div>
+          <div class="bg-blue-50 border border-blue-200 p-3 rounded-xl text-[#004684]"><strong>Pro Stylist Advice:</strong> ${rec.proStylistTip}</div>
+          <button data-action="ai-apply" class="w-full py-3 px-4 rounded-xl bg-[#FDB927] text-[#004684] font-extrabold text-xs uppercase tracking-wider hover:bg-amber-300 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm">✓ <span>Apply AI Style &amp; Needs to Booking Form</span></button>
+        </div>` : ''}
+      </div>
+    </div>`;
+  }
+
+  /* ===================== RENDER: CONFIRMATION MODAL ===================== */
+  function renderConfirmationModal() {
+    const b = state.confirmedBooking;
+    if (!b) return '';
+    return `
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs" data-action="confirm-backdrop">
+      <div class="bg-white border border-stone-200 rounded-3xl max-w-xl w-full p-6 text-[#0F172A] shadow-2xl space-y-6 max-h-[92vh] overflow-y-auto" onclick="event.stopPropagation()">
+        <div class="text-center space-y-2">
+          <div class="w-14 h-14 bg-blue-50 border border-blue-200 rounded-2xl flex items-center justify-center mx-auto text-[#004684] shadow-sm text-2xl">✓</div>
+          <h2 class="text-2xl font-serif font-extrabold text-[#004684] uppercase">Aggie Homecoming Pass Reserved!</h2>
+          <p class="text-xs text-stone-600">Booking Code: <span class="font-mono font-bold text-[#004684] bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200">${b.bookingCode}</span></p>
+        </div>
+        <div class="bg-slate-50 border border-stone-200 rounded-2xl p-5 shadow-xs space-y-4">
+          <div class="flex items-center justify-between border-b border-stone-200 pb-3">
+            <div><span class="text-[10px] uppercase font-bold text-[#004684] tracking-wider">Official Homecoming Pass</span><h3 class="font-serif text-base font-extrabold text-[#004684]">N.C. A&amp;T Aggie Homecoming Hair &amp; Nails Salon</h3></div>
+            <div class="text-right"><span class="text-xs text-stone-500 block">Total Package</span><span class="text-xl font-bold font-serif text-[#004684]">$${b.totalPrice}</span></div>
+          </div>
+          <div class="grid grid-cols-2 gap-3 text-xs bg-white p-3 rounded-xl border border-stone-200">
+            <div><span class="text-stone-500 block font-medium">Homecoming Date:</span><span class="font-extrabold text-[#004684]">${b.date}</span></div>
+            <div><span class="text-stone-500 block font-medium">1.5-Hour Slot:</span><span class="font-extrabold text-[#004684]">${b.timeSlotLabel}</span></div>
+          </div>
+          <div class="space-y-2 text-xs">
+            <div class="flex items-start gap-2">
+              <span class="shrink-0">✂️</span>
+              <div>
+                <span class="font-extrabold text-[#004684]">${b.hairService.name}</span><span class="text-stone-500 block">1.5 Hours Base Salon Session</span>
+                ${b.selectedHairNeeds.length ? `<div class="mt-1 flex flex-wrap gap-1">${b.selectedHairNeeds.map(n => `<span class="px-1.5 py-0.5 text-[10px] bg-blue-50 text-[#004684] rounded border border-blue-200 font-bold">${n}</span>`).join('')}</div>` : ''}
+                ${b.customHairDetails ? `<p class="text-[11px] text-stone-700 italic mt-1 bg-white p-2 rounded-lg border border-stone-200">"${esc(b.customHairDetails)}"</p>` : ''}
+              </div>
+            </div>
+            ${(b.selectedMani.price > 0 || b.selectedPedi.price > 0) ? `
+            <div class="pt-2 border-t border-stone-200 flex items-start gap-2">
+              <span class="shrink-0">✨</span>
+              <div class="space-y-1">
+                ${b.selectedMani.price > 0 ? `<p class="text-stone-800"><strong class="text-[#004684]">Mani:</strong> ${b.selectedMani.name} (+$${b.selectedMani.price})</p>` : ''}
+                ${b.selectedPedi.price > 0 ? `<p class="text-stone-800"><strong class="text-[#004684]">Pedi:</strong> ${b.selectedPedi.name} (+$${b.selectedPedi.price})</p>` : ''}
+                ${b.nailColorNotes ? `<p class="text-[11px] text-stone-500">Nail notes: ${esc(b.nailColorNotes)}</p>` : ''}
+              </div>
+            </div>` : ''}
+          </div>
+          <div class="pt-2 border-t border-stone-200 text-xs text-stone-700 flex flex-wrap items-center justify-between gap-2">
+            <div><span class="text-stone-500">Aggie Client: </span><strong class="text-[#004684]">${esc(b.client.fullName)}</strong> (${esc(b.client.phone)})</div>
+            ${b.client.readyByTime ? `<div class="text-[#004684] bg-amber-50 px-2 py-0.5 rounded border border-amber-200 font-bold">Ready by: ${esc(b.client.readyByTime)}</div>` : ''}
+          </div>
+        </div>
+        <div class="bg-blue-50/70 p-3.5 rounded-xl border border-blue-200 text-xs space-y-1">
+          <div class="flex items-center gap-1.5 text-[#004684] font-bold">📍 <span>N.C. A&amp;T Salon Location &amp; Arrival Notice</span></div>
+          <p class="text-slate-700">N.C. A&amp;T Aggie Salon, Student Union Beauty Hub Suite 200, Greensboro, NC. Please arrive 5 minutes before your 1.5-hour slot with dry/washed hair.</p>
+        </div>
+        <div class="flex flex-col sm:flex-row items-center gap-3">
+          <button onclick="window.print()" class="w-full sm:w-1/2 py-2.5 px-4 rounded-xl bg-slate-100 text-[#004684] border border-slate-200 hover:bg-slate-200 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer">🖨 <span>Print Pass / Save PDF</span></button>
+          <button data-action="new-booking" class="w-full sm:w-1/2 py-2.5 px-4 rounded-xl bg-[#004684] text-[#FDB927] hover:bg-[#00315C] font-extrabold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-md uppercase tracking-wider"><span>Book Another Appointment</span></button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  /* ===================== RENDER: MANUAL BOOKING MODAL ===================== */
+  function renderManualModal() {
+    if (!state.manualModalOpen) return '';
+    const m = state.manual;
+    return `
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs" data-action="manual-backdrop">
+      <div class="bg-white border border-stone-200 rounded-3xl max-w-lg w-full p-6 text-[#0F172A] shadow-2xl space-y-5" onclick="event.stopPropagation()">
+        <div class="flex items-center justify-between pb-3 border-b border-stone-200">
+          <h3 class="font-serif text-lg font-extrabold text-[#004684] uppercase">+ Add Manual / Aggie Phone Booking</h3>
+          <button data-action="close-manual" class="p-1 rounded text-stone-400 hover:text-[#004684] cursor-pointer">✕</button>
+        </div>
+        <form data-action="manual-submit" class="space-y-4 text-xs">
+          <div><label class="block text-[#004684] font-bold mb-1">Client Full Name *</label><input type="text" required data-action="manual-field" data-field="name" value="${esc(m.name)}" placeholder="E.g. Sarah Williams" class="w-full px-3 py-2 bg-slate-50 border border-stone-200 rounded-xl text-stone-800 focus:outline-none focus:ring-1 focus:ring-[#004684]" /></div>
+          <div><label class="block text-[#004684] font-bold mb-1">Phone Number *</label><input type="tel" required data-action="manual-field" data-field="phone" value="${esc(m.phone)}" placeholder="(336) 000-0000" class="w-full px-3 py-2 bg-slate-50 border border-stone-200 rounded-xl text-stone-800 focus:outline-none focus:ring-1 focus:ring-[#004684]" /></div>
+          <div><label class="block text-[#004684] font-bold mb-1">1.5-Hour Time Slot *</label>
+            <select data-action="manual-field" data-field="slotId" class="w-full px-3 py-2 bg-slate-50 border border-stone-200 rounded-xl text-stone-800 focus:outline-none focus:ring-1 focus:ring-[#004684]">
+              ${state.timeSlots.map(s => `<option value="${s.id}" ${s.isBooked ? 'disabled' : ''} ${m.slotId === s.id ? 'selected' : ''}>${s.displayLabel}${s.isBooked ? ' (Already Booked)' : ''}</option>`).join('')}
+            </select>
+          </div>
+          <div><label class="block text-[#004684] font-bold mb-1">Hair Service (1.5h)</label>
+            <select data-action="manual-field" data-field="hairServiceId" class="w-full px-3 py-2 bg-slate-50 border border-stone-200 rounded-xl text-stone-800 focus:outline-none focus:ring-1 focus:ring-[#004684]">
+              ${HAIR_SERVICES.map(h => `<option value="${h.id}" ${m.hairServiceId === h.id ? 'selected' : ''}>${h.name} ($${h.basePrice})</option>`).join('')}
+            </select>
+          </div>
+          <div><label class="block text-[#004684] font-bold mb-1">Specific Hair Needs / Notes</label><input type="text" data-action="manual-field" data-field="notes" value="${esc(m.notes)}" placeholder="E.g. Clip-ins installation..." class="w-full px-3 py-2 bg-slate-50 border border-stone-200 rounded-xl text-stone-800 focus:outline-none focus:ring-1 focus:ring-[#004684]" /></div>
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="block text-[#004684] font-bold mb-1">Manicure Add-On</label>
+              <select data-action="manual-field" data-field="maniId" class="w-full px-3 py-2 bg-slate-50 border border-stone-200 rounded-xl text-stone-800 focus:outline-none focus:ring-1 focus:ring-[#004684]">
+                ${MANICURE_ADDONS.map(a => `<option value="${a.id}" ${m.maniId === a.id ? 'selected' : ''}>${a.name} (+$${a.price})</option>`).join('')}
+              </select>
+            </div>
+            <div><label class="block text-[#004684] font-bold mb-1">Pedicure Add-On</label>
+              <select data-action="manual-field" data-field="pediId" class="w-full px-3 py-2 bg-slate-50 border border-stone-200 rounded-xl text-stone-800 focus:outline-none focus:ring-1 focus:ring-[#004684]">
+                ${PEDICURE_ADDONS.map(a => `<option value="${a.id}" ${m.pediId === a.id ? 'selected' : ''}>${a.name} (+$${a.price})</option>`).join('')}
+              </select>
+            </div>
+          </div>
+          <button type="submit" class="w-full py-3.5 px-4 rounded-xl bg-[#004684] text-[#FDB927] font-extrabold text-xs uppercase tracking-wider hover:bg-[#00315C] transition-all cursor-pointer shadow-md mt-2">Save Appointment to Schedule</button>
+        </form>
+      </div>
+    </div>`;
+  }
+
+  /* ===================== MAIN RENDER ===================== */
+  function render() {
+    syncSlotAvailability();
+    const root = document.getElementById('root');
+    root.innerHTML = `
+      ${renderHeader()}
+      <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        ${state.activeView === 'booking' ? renderBookingView() : renderDashboardView()}
+      </main>
+      ${renderAiModal()}
+      ${renderConfirmationModal()}
+      ${renderManualModal()}
+    `;
+  }
+
+  /* ===================== EVENT DELEGATION ===================== */
+  document.addEventListener('click', (e) => {
+    const el = e.target.closest('[data-action]');
+    if (!el) return;
+    const action = el.dataset.action;
+
+    if (action === 'view-booking') state.activeView = 'booking';
+    else if (action === 'view-dashboard') state.activeView = 'dashboard';
+    else if (action === 'open-ai') state.aiModalOpen = true;
+    else if (action === 'close-ai') { state.aiModalOpen = false; }
+    else if (action === 'ai-backdrop' && e.target === el) state.aiModalOpen = false;
+    else if (action === 'pick-date') { state.selectedDate = el.dataset.date; }
+    else if (action === 'pick-slot') { state.selectedSlotId = el.dataset.slot; }
+    else if (action === 'pick-hair') { state.hairService = HAIR_SERVICES.find(h => h.id === el.dataset.hair); }
+    else if (action === 'pick-mani') { state.selectedMani = MANICURE_ADDONS.find(m => m.id === el.dataset.id); }
+    else if (action === 'pick-pedi') { state.selectedPedi = PEDICURE_ADDONS.find(p => p.id === el.dataset.id); }
+    else if (action === 'pick-shape') { state.nailShape = el.dataset.shape; }
+    else if (action === 'goto-step') {
+      const step = parseInt(el.dataset.step, 10);
+      if (step < state.currentStep || canProceedStep(state.currentStep)) state.currentStep = step;
+    }
+    else if (action === 'next-step') { if (canProceedStep(state.currentStep)) state.currentStep++; }
+    else if (action === 'prev-step') { state.currentStep--; }
+    else if (action === 'confirm-booking') { handleConfirmBooking(); return; }
+    else if (action === 'new-booking') { resetBookingForm(); state.confirmedBooking = null; }
+    else if (action === 'confirm-backdrop' && e.target === el) { state.confirmedBooking = null; }
+    else if (action === 'ai-generate') { handleAiGenerate(); return; }
+    else if (action === 'ai-apply') { handleAiApply(); }
+    else if (action === 'open-manual') { state.manualModalOpen = true; }
+    else if (action === 'close-manual') { state.manualModalOpen = false; }
+    else if (action === 'manual-backdrop' && e.target === el) { state.manualModalOpen = false; }
+    else if (action === 'toggle-block') {
+      const slot = state.timeSlots.find(s => s.id === el.dataset.slot);
+      if (slot) slot.isBlocked = !slot.isBlocked;
+    }
+    else if (action === 'delete-appt') {
+      state.appointments = state.appointments.filter(a => a.id !== el.dataset.id);
+      showToast('Appointment cancelled.');
+    }
+    else { return; }
+    render();
+  });
+
+  document.addEventListener('change', (e) => {
+    const el = e.target.closest('[data-action]');
+    if (!el) return;
+    const action = el.dataset.action;
+
+    if (action === 'toggle-need') {
+      const need = el.dataset.need;
+      if (el.checked) state.selectedHairNeeds.push(need);
+      else state.selectedHairNeeds = state.selectedHairNeeds.filter(n => n !== need);
+    }
+    else if (action === 'custom-hair') state.customHairDetails = el.value;
+    else if (action === 'inspo-url') state.hairInspirationUrl = el.value;
+    else if (action === 'nail-notes') state.nailColorNotes = el.value;
+    else if (action === 'client-field') state.clientInfo[el.dataset.field] = el.value;
+    else if (action === 'ai-field') state.ai[el.dataset.field] = el.value;
+    else if (action === 'dash-date') state.selectedDate = el.value;
+    else if (action === 'dash-filter') state.dashboardFilter = el.value;
+    else if (action === 'update-status') {
+      const appt = state.appointments.find(a => a.id === el.dataset.id);
+      if (appt) appt.status = el.value;
+    }
+    else if (action === 'manual-field') state.manual[el.dataset.field] = el.value;
+    else return;
+    render();
+  });
+
+  document.addEventListener('submit', (e) => {
+    const el = e.target.closest('[data-action="manual-submit"]');
+    if (!el) return;
+    e.preventDefault();
+    const m = state.manual;
+    if (!m.name || !m.phone) return;
+    const slot = state.timeSlots.find(s => s.id === m.slotId) || state.timeSlots[0];
+    const newAppt = {
+      id: 'b-manual-' + Date.now(),
+      bookingCode: 'HOCO-' + Math.floor(1000 + Math.random() * 9000),
+      date: state.selectedDate,
+      timeSlotId: slot.id,
+      timeSlotLabel: slot.displayLabel,
+      hairService: HAIR_SERVICES.find(h => h.id === m.hairServiceId),
+      selectedHairNeeds: [],
+      customHairDetails: m.notes,
+      selectedMani: MANICURE_ADDONS.find(a => a.id === m.maniId),
+      selectedPedi: PEDICURE_ADDONS.find(a => a.id === m.pediId),
+      client: { fullName: m.name, phone: m.phone, schoolName: 'Phone / Walk-In', readyByTime: 'N/A' },
+      totalPrice: HAIR_SERVICES.find(h => h.id === m.hairServiceId).basePrice + MANICURE_ADDONS.find(a => a.id === m.maniId).price + PEDICURE_ADDONS.find(a => a.id === m.pediId).price,
+      status: 'confirmed'
+    };
+    state.appointments.unshift(newAppt);
+    state.manualModalOpen = false;
+    state.manual = { name:'', phone:'', slotId: state.timeSlots[0].id, hairServiceId:'hair-1', notes:'', maniId:'mani-none', pediId:'pedi-none' };
+    showToast('Manual booking saved to schedule.');
+    render();
+  });
+
+  /* ===================== ACTION HANDLERS ===================== */
+  function handleConfirmBooking() {
+    if (!validateStep4()) { render(); return; }
+    const slot = state.timeSlots.find(s => s.id === state.selectedSlotId);
+    const booking = {
+      id: 'b-' + Date.now(),
+      bookingCode: 'HOCO-' + Math.floor(1000 + Math.random() * 9000),
+      date: state.selectedDate,
+      timeSlotId: slot.id,
+      timeSlotLabel: slot.displayLabel,
+      hairService: state.hairService,
+      selectedHairNeeds: state.selectedHairNeeds.slice(),
+      customHairDetails: state.customHairDetails,
+      selectedMani: state.selectedMani,
+      selectedPedi: state.selectedPedi,
+      nailColorNotes: state.nailColorNotes,
+      client: { ...state.clientInfo },
+      totalPrice: totalPrice(),
+      status: 'confirmed'
+    };
+    state.appointments.unshift(booking);
+    state.confirmedBooking = booking;
+    render();
+  }
+
+  function resetBookingForm() {
+    state.currentStep = 1;
+    state.customHairDetails = '';
+    state.selectedHairNeeds = [];
+    state.nailColorNotes = '';
+    state.clientInfo = { fullName:'', phone:'', email:'', instagramHandle:'', schoolName:'Westlake High School', readyByTime:'3:30 PM' };
+  }
+
+  function handleAiGenerate() {
+    state.aiLoading = true;
+    render();
+    setTimeout(() => {
+      state.aiRecommendation = getFallbackRecommendation(state.ai);
+      state.aiLoading = false;
+      render();
+    }, 650); // simulated latency, mirrors the real app's async Gemini call
+  }
+
+  function handleAiApply() {
+    const rec = state.aiRecommendation;
+    if (!rec) return;
+    const matched = HAIR_SERVICES.find(s =>
+      rec.hairStyleSuggestion.toLowerCase().includes(s.name.toLowerCase()) || s.name.toLowerCase().includes('waves')
+    ) || HAIR_SERVICES[0];
+    state.hairService = matched;
+    state.selectedHairNeeds = rec.hairNeedsToSelect || [];
+    state.nailColorNotes = `${rec.suggestedManiMatch} (Matched to ${state.ai.dressColor} dress)`;
+    state.currentStep = 2;
+    state.aiModalOpen = false;
+    state.aiRecommendation = null;
+    showToast('AI recommendation applied to your booking!');
+    render();
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>

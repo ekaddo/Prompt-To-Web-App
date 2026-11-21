@@ -136,6 +136,17 @@
       folder: "Web Apps/AggieTailgateServices",
       demo: "index.html",
       prompt: "ReverseEngineeredPrompt_AggieTailgate.md"
+    },
+    {
+      title: "Aura Glam — N.C. A&T Homecoming Salon",
+      summary: "A 4-step hair/mani/pedi booking wizard with an AI dress-matching style consultant and a stylist dashboard. The real app is a React + Vite + Express + Gemini full-stack project; this demo is a static clone using its built-in fallback AI logic (no backend).",
+      tags: ["React", "Vite", "Express", "Gemini API", "Reverse-engineered"],
+      swatch: ["#004684", "#FDB927", "#004684", "#FDB927", "#004684", "#FDB927"],
+      folder: "Web Apps/GHOE_Salon",
+      demo: "demo.html",
+      prompt: "ReverseEngineeredPrompt_GHOE_Salon.md",
+      note: "Live Demo is a static clone (client-side only). Full Source is the real React/Vite/Express app — needs npm install && npm run dev (Gemini API key optional, has a built-in fallback).",
+      sourceUrl: "https://github.com/ekaddo/Prompt-To-Web-App/tree/main/Web%20Apps/GHOE_Salon/source"
     }
   ];
 
@@ -169,7 +180,9 @@
         <a href="${demoHref}" target="_blank" rel="noopener" class="text-xs font-bold px-3 py-2 rounded-lg bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 text-white">Live Demo</a>
         <button data-idx="${i}" class="view-prompt-btn text-xs font-semibold px-3 py-2 rounded-lg bg-white/[0.07] hover:bg-white/[0.12] text-slate-100 border border-white/[0.08]">View Prompt</button>
         <a href="${promptHref}" download class="text-xs font-semibold px-3 py-2 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-slate-300 border border-white/[0.07]">Download .md</a>
+        ${app.sourceUrl ? `<a href="${app.sourceUrl}" target="_blank" rel="noopener" class="text-xs font-semibold px-3 py-2 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-slate-300 border border-white/[0.07]">Full Source</a>` : ''}
       </div>
+      ${app.note ? `<p class="text-[10.5px] text-slate-500 mt-2.5 leading-relaxed">${app.note}</p>` : ''}
     `;
     gallery.appendChild(card);
   });

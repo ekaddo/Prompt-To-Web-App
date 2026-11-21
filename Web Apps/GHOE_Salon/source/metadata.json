@@ -1,0 +1,6 @@
+{
+  "name": "N.C. A&T Aggie Homecoming Salon",
+  "description": "Book 1.5-hour N.C. A&T Homecoming hair appointments with manicure and pedicure add-ons, custom hair service requests, and AI style recommendations in Aggie Blue & Gold.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
