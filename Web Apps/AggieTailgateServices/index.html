@@ -635,7 +635,9 @@
       /* ── State ───────────────────────────────────────── */
       const reservations = {};          // slotNum → { name, email, phone, addons, total }
       let selectedSlot = null;
-      const registrationOpen = new Date() < DEADLINE;
+      // Forced open for this gallery demo so visitors can click through the reservation flow
+      // (the original deadline-based check is `new Date() < DEADLINE`).
+      const registrationOpen = true;
 
       /* ── DOM refs ────────────────────────────────────── */
       const $overlay = document.getElementById('modalOverlay');
